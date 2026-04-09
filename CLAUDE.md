@@ -1,3 +1,14 @@
+# Git & Version Control
+
+    - After completing any meaningful unit of work (a feature, a screen, a fix, a refactor), commit the changes to Git immediately.
+    - Push to GitHub after every commit — do not let commits accumulate locally.                                                                                                                                                    
+    - Commit messages must be clean, descriptive, and follow this format:
+      - `feat: add TagSelectionScreen with hierarchical picker`                                                                                                                                                                     
+      - `fix: correct onboarding completion flag not persisting`                                                                                                                                                                    
+      - `chore: install React Navigation and configure RootNavigator`
+    - Never batch unrelated changes into a single commit — keep commits focused and atomic.                                                                                                                                         
+    - The goal is that the GitHub remote always reflects the latest working state, so no progress is ever lost.
+
 # concept
 
 “Find People in Your Communities
