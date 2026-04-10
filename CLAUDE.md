@@ -123,6 +123,18 @@ of course by doing that they expect to be met by events that fit their interests
 
 -A potential premium feature may later allow users to receive recommendations for open events that match their interests, enabling them to explore communities they have not yet joined while keeping the core experience free and focused on existing communities.
 
+Map Feature — Event Discovery
+
+A map displaying markers/standpoints across different geographic areas, each representing an active event.
+On top of each marker, a counter shows the current number of attendees out of the maximum capacity allowed for that event.
+When zooming out, nearby events cluster together into grouped markers for readability. When zooming back in, clusters dissemble and display each event individually with precise location accuracy.
+Tapping on an event marker triggers a pop-up panel with detailed information about that event.
+Each marker displays the event name above the attendee counter.
+A persistent search bar sits above the map, allowing users to look up a specific address or location.
+Once an address is searched, the map automatically navigates and zooms into that location.
+A secondary button (3-dot / list button) switches the view from the map to a list format, displaying all events within the searched address or area, each shown with their name and corresponding symbol/icon.
+
+
 -(Aiden Implemented Idea)
 Map above Icon
 
