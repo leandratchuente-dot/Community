@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(npm --version)",
-      "Bash(cmd.exe:*)",
-      "Bash(powershell.exe:*)"
-    ]
-  }
-}
