@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx expo:*)",
+      "Bash(npm ls:*)",
+      "Bash(node -e \"const pkg = require\\('./node_modules/react-native-maps/package.json'\\); console.log\\('version:', pkg.version\\); console.log\\('main:', pkg.main\\); console.log\\('types:', pkg.types\\);\")",
+      "Bash(npx expo-doctor:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(node -e \"const a=require\\('./node_modules/react-native-webview/package.json'\\); const b=require\\('./node_modules/expo-location/package.json'\\); console.log\\('webview:', a.version, '| expo-location:', b.version\\);\")"
+    ]
+  }
+}

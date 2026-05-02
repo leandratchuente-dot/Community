@@ -1,17 +1,8 @@
 ### IntelliJ IDEA ###
-.idea/
-*.iml
 out/
 !**/src/main/**/out/
 !**/src/test/**/out/
 .kotlin
-
-### Claude Code ###
-.claude/
-
-### Environment ###
-.env
-.env.local
 
 ### Eclipse ###
 .apt_generated
