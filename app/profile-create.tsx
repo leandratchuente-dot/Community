@@ -13,6 +13,7 @@ import {
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { supabase } from '@/lib/supabase';
+import { flushPendingInterests } from '@/lib/interests';
 
 const AVATAR_COLORS = ['#6C47FF', '#FF6B6B', '#4D96FF', '#6BCB77', '#FFD93D', '#FF922B', '#E879F9'];
 
@@ -35,7 +36,7 @@ export default function ProfileCreateScreen() {
       return;
     }
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email: email.trim().toLowerCase(),
       password,
       options: {
@@ -46,11 +47,15 @@ export default function ProfileCreateScreen() {
         },
       },
     });
-    setLoading(false);
     if (error) {
+      setLoading(false);
       Alert.alert('Could not create account', error.message);
       return;
     }
+    if (data.user) {
+      await flushPendingInterests(data.user.id);
+    }
+    setLoading(false);
     router.replace('/map');
   }
 

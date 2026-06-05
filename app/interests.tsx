@@ -1,24 +1,29 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import {
+  SEED_INTERESTS,
+  savePendingInterestIds,
+  seedAndFetchInterests,
+} from '@/lib/interests';
 
-const INTERESTS = [
-  { id: '1',  emoji: '🏀', label: 'Basketball' },
-  { id: '2',  emoji: '⚽', label: 'Football' },
-  { id: '3',  emoji: '🎮', label: 'Gaming' },
-  { id: '4',  emoji: '🎷', label: 'Jazz' },
-  { id: '5',  emoji: '🏐', label: 'Volleyball' },
-  { id: '6',  emoji: '📸', label: 'Photography' },
-  { id: '7',  emoji: '🥾', label: 'Hiking' },
-  { id: '8',  emoji: '🍳', label: 'Cooking' },
-  { id: '9',  emoji: '🎵', label: 'Music' },
-  { id: '10', emoji: '🎨', label: 'Art' },
-];
+const INTERESTS = SEED_INTERESTS.map((item, index) => ({
+  id: String(index + 1),
+  ...item,
+}));
 
 export default function InterestSelectionScreen() {
   const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  // name → supabase id, populated in the background
+  const supabaseIdMap = useRef<Record<string, number>>({});
+
+  useEffect(() => {
+    seedAndFetchInterests().then((map) => {
+      supabaseIdMap.current = map;
+    });
+  }, []);
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -26,6 +31,22 @@ export default function InterestSelectionScreen() {
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
+  }
+
+  async function handleContinue() {
+    // resolve selected local ids → supabase ids
+    const supabaseIds = [...selected]
+      .map((localId) => {
+        const name = INTERESTS.find((i) => i.id === localId)?.name ?? '';
+        return supabaseIdMap.current[name];
+      })
+      .filter((id): id is number => id !== undefined);
+
+    if (supabaseIds.length > 0) {
+      await savePendingInterestIds(supabaseIds);
+    }
+
+    router.replace('/profile-create');
   }
 
   return (
@@ -49,7 +70,7 @@ export default function InterestSelectionScreen() {
             >
               <Text style={styles.tagEmoji}>{item.emoji}</Text>
               <Text style={[styles.tagLabel, isSelected && styles.tagLabelSelected]}>
-                {item.label}
+                {item.label ?? item.name}
               </Text>
             </TouchableOpacity>
           );
@@ -59,7 +80,7 @@ export default function InterestSelectionScreen() {
       <View style={styles.footer}>
         <TouchableOpacity
           style={[styles.button, selected.size === 0 && styles.buttonDisabled]}
-          onPress={() => router.replace('/profile-create')}
+          onPress={handleContinue}
           activeOpacity={0.85}
           disabled={selected.size === 0}
         >
