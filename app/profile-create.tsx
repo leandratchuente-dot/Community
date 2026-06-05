@@ -36,6 +36,8 @@ export default function ProfileCreateScreen() {
       return;
     }
     setLoading(true);
+    console.log('[signUp] EXPO_PUBLIC_SUPABASE_URL:', process.env.EXPO_PUBLIC_SUPABASE_URL);
+    console.log('[signUp] attempting signup for:', email.trim().toLowerCase());
     const { data, error } = await supabase.auth.signUp({
       email: email.trim().toLowerCase(),
       password,
@@ -48,10 +50,14 @@ export default function ProfileCreateScreen() {
       },
     });
     if (error) {
+      console.log('[signUp] error.message:', error.message);
+      console.log('[signUp] error.status:', error.status);
+      console.log('[signUp] error (full):', JSON.stringify(error, null, 2));
       setLoading(false);
       Alert.alert('Could not create account', error.message);
       return;
     }
+    console.log('[signUp] success, user id:', data.user?.id);
     if (data.user) {
       await flushPendingInterests(data.user.id);
     }
