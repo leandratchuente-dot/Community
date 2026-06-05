@@ -59,6 +59,17 @@ export default function ProfileCreateScreen() {
     }
     console.log('[signUp] success, user id:', data.user?.id);
     if (data.user) {
+      const { error: profileError } = await supabase.from('profiles').insert({
+        id: data.user.id,
+        full_name: fullName.trim(),
+        username: username.trim().toLowerCase(),
+        avatar_color: avatarColor,
+      });
+      if (profileError) {
+        console.log('[profiles] insert error:', profileError.message, profileError.code);
+      } else {
+        console.log('[profiles] row inserted for user:', data.user.id);
+      }
       await flushPendingInterests(data.user.id);
     }
     setLoading(false);
