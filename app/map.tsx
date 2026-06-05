@@ -11,6 +11,8 @@ import {
 import { WebView, WebViewMessageEvent } from 'react-native-webview';
 import * as Location from 'expo-location';
 import { StatusBar } from 'expo-status-bar';
+import { useRouter } from 'expo-router';
+import { supabase } from '@/lib/supabase';
 
 // ─── types ───────────────────────────────────────────────────────────────────
 
@@ -311,6 +313,7 @@ const LEAFLET_HTML = buildLeafletHTML(EVENTS);
 // ─── component ───────────────────────────────────────────────────────────────
 
 export default function MapScreen() {
+  const router = useRouter();
   const webViewRef = useRef<WebView>(null);
 
   const [activeFilter, setActiveFilter] = useState('All');
@@ -400,6 +403,15 @@ export default function MapScreen() {
       }
     } catch {}
   }, []);
+
+  async function handleJoinEvent() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      router.push('/profile-create');
+      return;
+    }
+    // TODO: record join in Supabase once events table exists
+  }
 
   const cardTranslateY = cardAnim.interpolate({
     inputRange: [0, 1],
@@ -574,6 +586,7 @@ export default function MapScreen() {
 
           <TouchableOpacity
             style={[styles.cardButton, { backgroundColor: selectedEvent.color }]}
+            onPress={handleJoinEvent}
             activeOpacity={0.85}
           >
             <Text style={styles.cardButtonText}>Join Event</Text>

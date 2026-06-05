@@ -1,9 +1,18 @@
+import { useEffect } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { supabase } from '@/lib/supabase';
 
 export default function WelcomeScreen() {
   const router = useRouter();
+
+  // skip welcome for users who are already signed in
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) router.replace('/map');
+    });
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -23,6 +32,14 @@ export default function WelcomeScreen() {
           activeOpacity={0.85}
         >
           <Text style={styles.buttonText}>Find Your People</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.loginLink}
+          onPress={() => router.push('/login')}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.loginLinkText}>Already have an account? Log in</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -60,6 +77,7 @@ const styles = StyleSheet.create({
   bottomSection: {
     alignItems: 'center',
     zIndex: 1,
+    gap: 20,
   },
   button: {
     backgroundColor: '#FFFFFF',
@@ -79,5 +97,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#3D1F8C',
     letterSpacing: 0.3,
+  },
+  loginLink: {
+    paddingVertical: 6,
+  },
+  loginLinkText: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.7)',
+    fontWeight: '500',
   },
 });

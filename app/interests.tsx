@@ -59,7 +59,7 @@ export default function InterestSelectionScreen() {
       <View style={styles.footer}>
         <TouchableOpacity
           style={[styles.button, selected.size === 0 && styles.buttonDisabled]}
-          onPress={() => router.replace('/map')}
+          onPress={() => router.replace('/profile-create')}
           activeOpacity={0.85}
           disabled={selected.size === 0}
         >
