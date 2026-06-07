@@ -16,13 +16,12 @@ const INTERESTS = SEED_INTERESTS.map((item, index) => ({
 export default function InterestSelectionScreen() {
   const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  // name → supabase id, populated in the background
-  const supabaseIdMap = useRef<Record<string, number>>({});
+  // Keep a promise ref so handleContinue can await the fetch rather than
+  // reading a potentially-empty map if the user taps Continue quickly.
+  const fetchPromise = useRef<Promise<Record<string, number>> | null>(null);
 
   useEffect(() => {
-    seedAndFetchInterests().then((map) => {
-      supabaseIdMap.current = map;
-    });
+    fetchPromise.current = seedAndFetchInterests();
   }, []);
 
   function toggle(id: string) {
@@ -34,16 +33,21 @@ export default function InterestSelectionScreen() {
   }
 
   async function handleContinue() {
-    // resolve selected local ids → supabase ids
+    const map = await (fetchPromise.current ?? seedAndFetchInterests());
+
     const supabaseIds = [...selected]
       .map((localId) => {
         const name = INTERESTS.find((i) => i.id === localId)?.name ?? '';
-        return supabaseIdMap.current[name];
+        return map[name];
       })
       .filter((id): id is number => id !== undefined);
 
+    console.log('[interests] resolved supabase IDs to save:', supabaseIds);
+
     if (supabaseIds.length > 0) {
       await savePendingInterestIds(supabaseIds);
+    } else {
+      console.warn('[interests] no supabase IDs resolved — map keys:', Object.keys(map));
     }
 
     router.replace('/profile-create');

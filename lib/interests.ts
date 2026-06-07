@@ -57,10 +57,18 @@ export async function savePendingInterestIds(ids: number[]): Promise<void> {
 /** Flush pending interest IDs into user_interests after the user has signed up. */
 export async function flushPendingInterests(userId: string): Promise<void> {
   const raw = await AsyncStorage.getItem(ASYNC_KEY);
-  if (!raw) return;
+  if (!raw) {
+    console.log('[flushPendingInterests] nothing in AsyncStorage — skipping');
+    return;
+  }
 
   const ids: number[] = JSON.parse(raw);
-  if (ids.length === 0) return;
+  if (ids.length === 0) {
+    console.log('[flushPendingInterests] empty ID array — skipping');
+    return;
+  }
+
+  console.log('[flushPendingInterests] inserting', ids.length, 'interests for user', userId);
 
   const rows = ids.map((interest_id) => ({ user_id: userId, interest_id }));
   const { error } = await supabase
@@ -68,9 +76,10 @@ export async function flushPendingInterests(userId: string): Promise<void> {
     .upsert(rows, { onConflict: 'user_id,interest_id', ignoreDuplicates: true });
 
   if (error) {
-    console.warn('user_interests flush error:', error.message);
+    console.error('[flushPendingInterests] upsert error:', error.message, error.code, error.details);
     return;
   }
 
+  console.log('[flushPendingInterests] success — clearing AsyncStorage');
   await AsyncStorage.removeItem(ASYNC_KEY);
 }
