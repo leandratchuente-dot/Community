@@ -404,6 +404,11 @@ export default function MapScreen() {
     } catch {}
   }, []);
 
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    router.replace('/');
+  }
+
   async function handleJoinEvent() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
@@ -511,6 +516,11 @@ export default function MapScreen() {
           {/* locate me */}
           <TouchableOpacity style={styles.iconBtn} onPress={locateMe} activeOpacity={0.8}>
             <Text style={styles.iconBtnText}>📍</Text>
+          </TouchableOpacity>
+
+          {/* temp: logout */}
+          <TouchableOpacity style={[styles.iconBtn, styles.logoutBtn]} onPress={handleLogout} activeOpacity={0.8}>
+            <Text style={styles.iconBtnText}>🚪</Text>
           </TouchableOpacity>
         </View>
 
@@ -720,6 +730,9 @@ const styles = StyleSheet.create({
   },
   iconBtnActive: {
     backgroundColor: '#3D1F8C',
+  },
+  logoutBtn: {
+    backgroundColor: '#FEE2E2',
   },
   iconBtnText: { fontSize: 18 },
   filtersRow: {
