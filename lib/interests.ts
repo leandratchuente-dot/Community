@@ -19,7 +19,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
 
-const ASYNC_KEY = 'pending_interest_ids';
+// Stores names, not IDs — the user is unauthenticated at selection time so
+// Supabase calls can fail silently due to RLS. Names are resolved to IDs
+// inside flushPendingInterests once the user has a valid session.
+const ASYNC_KEY = 'pending_interest_names';
 
 export const SEED_INTERESTS = [
   { name: 'Basketball', emoji: '🏀' },
@@ -49,12 +52,14 @@ export async function seedAndFetchInterests(): Promise<Record<string, number>> {
   return Object.fromEntries(data.map((r: { id: number; name: string }) => [r.name, r.id]));
 }
 
-/** Persist selected interest IDs (Supabase) while the user hasn't signed up yet. */
-export async function savePendingInterestIds(ids: number[]): Promise<void> {
-  await AsyncStorage.setItem(ASYNC_KEY, JSON.stringify(ids));
+/** Persist selected interest names to AsyncStorage (no Supabase call — user not yet auth'd). */
+export async function savePendingInterestNames(names: string[]): Promise<void> {
+  await AsyncStorage.setItem(ASYNC_KEY, JSON.stringify(names));
+  const verified = await AsyncStorage.getItem(ASYNC_KEY);
+  console.log('[savePendingInterestNames] saved to AsyncStorage:', verified);
 }
 
-/** Flush pending interest IDs into user_interests after the user has signed up. */
+/** Flush pending interests into user_interests after the user has signed up. */
 export async function flushPendingInterests(userId: string): Promise<void> {
   const raw = await AsyncStorage.getItem(ASYNC_KEY);
   if (!raw) {
@@ -62,9 +67,20 @@ export async function flushPendingInterests(userId: string): Promise<void> {
     return;
   }
 
-  const ids: number[] = JSON.parse(raw);
+  const names: string[] = JSON.parse(raw);
+  if (names.length === 0) {
+    console.log('[flushPendingInterests] empty names array — skipping');
+    return;
+  }
+
+  console.log('[flushPendingInterests] resolving names to IDs for user', userId, ':', names);
+
+  // User is now authenticated — safe to call Supabase.
+  const map = await seedAndFetchInterests();
+  const ids = names.map((n) => map[n]).filter((id): id is number => id !== undefined);
+
   if (ids.length === 0) {
-    console.log('[flushPendingInterests] empty ID array — skipping');
+    console.error('[flushPendingInterests] could not resolve any names to IDs. Map keys:', Object.keys(map));
     return;
   }
 

@@ -1,12 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import {
-  SEED_INTERESTS,
-  savePendingInterestIds,
-  seedAndFetchInterests,
-} from '@/lib/interests';
+import { SEED_INTERESTS, savePendingInterestNames } from '@/lib/interests';
 
 const INTERESTS = SEED_INTERESTS.map((item, index) => ({
   id: String(index + 1),
@@ -16,13 +12,6 @@ const INTERESTS = SEED_INTERESTS.map((item, index) => ({
 export default function InterestSelectionScreen() {
   const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  // Keep a promise ref so handleContinue can await the fetch rather than
-  // reading a potentially-empty map if the user taps Continue quickly.
-  const fetchPromise = useRef<Promise<Record<string, number>> | null>(null);
-
-  useEffect(() => {
-    fetchPromise.current = seedAndFetchInterests();
-  }, []);
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -33,22 +22,13 @@ export default function InterestSelectionScreen() {
   }
 
   async function handleContinue() {
-    const map = await (fetchPromise.current ?? seedAndFetchInterests());
+    const names = [...selected]
+      .map((localId) => INTERESTS.find((i) => i.id === localId)?.name)
+      .filter((n): n is string => Boolean(n));
 
-    const supabaseIds = [...selected]
-      .map((localId) => {
-        const name = INTERESTS.find((i) => i.id === localId)?.name ?? '';
-        return map[name];
-      })
-      .filter((id): id is number => id !== undefined);
-
-    console.log('[interests] resolved supabase IDs to save:', supabaseIds);
-
-    if (supabaseIds.length > 0) {
-      await savePendingInterestIds(supabaseIds);
-    } else {
-      console.warn('[interests] no supabase IDs resolved — map keys:', Object.keys(map));
-    }
+    console.log('[interests] selected names to save:', names);
+    await savePendingInterestNames(names);
+    console.log('[interests] AsyncStorage write complete — navigating to profile-create');
 
     router.replace('/profile-create');
   }
