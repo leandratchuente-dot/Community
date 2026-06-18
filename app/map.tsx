@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   ScrollView,
@@ -31,86 +31,6 @@ type EventPin = {
   attendees: number;
   maxAttendees: number;
 };
-
-// ─── data ────────────────────────────────────────────────────────────────────
-
-const EVENTS: EventPin[] = [
-  {
-    id: '1',
-    title: '3v3 Pickup Basketball',
-    location: 'Europahalle Karlsruhe',
-    date: 'Sat, 19 Apr',
-    time: '14:00 – 17:00',
-    description: 'Casual 3v3 runs — all skill levels welcome. Just show up and ball.',
-    category: 'Basketball',
-    color: '#FF6B6B',
-    emoji: '🏀',
-    lat: 49.0097,
-    lng: 8.3842,
-    attendees: 8,
-    maxAttendees: 20,
-  },
-  {
-    id: '2',
-    title: 'Casual Sunday Football',
-    location: 'Wildparkstadion, Karlsruhe',
-    date: 'Sun, 20 Apr',
-    time: '10:00 – 12:00',
-    description: 'Relaxed Sunday kick-about in the park. Bring boots and good vibes.',
-    category: 'Football',
-    color: '#4D96FF',
-    emoji: '⚽',
-    lat: 49.0235,
-    lng: 8.4123,
-    attendees: 14,
-    maxAttendees: 22,
-  },
-  {
-    id: '3',
-    title: 'FIFA Tournament Night',
-    location: 'KIT Campus South, Karlsruhe',
-    date: 'Fri, 18 Apr',
-    time: '19:00 – 23:00',
-    description: 'Bracket-style FIFA tournament. Bring your controller, glory awaits.',
-    category: 'Gaming',
-    color: '#6BCB77',
-    emoji: '🎮',
-    lat: 49.0119,
-    lng: 8.4156,
-    attendees: 6,
-    maxAttendees: 16,
-  },
-  {
-    id: '4',
-    title: 'Jazz Jam Session',
-    location: 'Tollhaus Karlsruhe',
-    date: 'Thu, 17 Apr',
-    time: '20:00 – 23:30',
-    description: 'Open-mic jam session for jazz lovers. Bring your instrument or just your ears.',
-    category: 'Jazz',
-    color: '#FFD93D',
-    emoji: '🎷',
-    lat: 49.0142,
-    lng: 8.3947,
-    attendees: 18,
-    maxAttendees: 30,
-  },
-  {
-    id: '5',
-    title: 'Beach Volleyball',
-    location: 'Rheinstrandbad Rappenwört',
-    date: 'Sat, 19 Apr',
-    time: '11:00 – 15:00',
-    description: 'Sand, sun and spikes by the Rhine. Mixed teams, all levels welcome.',
-    category: 'Volleyball',
-    color: '#FF922B',
-    emoji: '🏐',
-    lat: 49.0058,
-    lng: 8.3041,
-    attendees: 11,
-    maxAttendees: 18,
-  },
-];
 
 const FILTERS = ['All', 'Basketball', 'Football', 'Gaming', 'Jazz', 'Volleyball'];
 
@@ -308,22 +228,54 @@ function buildLeafletHTML(events: EventPin[]): string {
 </html>`;
 }
 
-const LEAFLET_HTML = buildLeafletHTML(EVENTS);
-
 // ─── component ───────────────────────────────────────────────────────────────
 
 export default function MapScreen() {
   const router = useRouter();
   const webViewRef = useRef<WebView>(null);
 
+  const [events, setEvents] = useState<EventPin[]>([]);
+  const [eventsLoaded, setEventsLoaded] = useState(false);
   const [activeFilter, setActiveFilter] = useState('All');
   const [search, setSearch] = useState('');
   const [listView, setListView] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<EventPin | null>(null);
   const [cardAnim] = useState(new Animated.Value(0));
 
+  // ── fetch events from Supabase ──
+  useEffect(() => {
+    supabase
+      .from('events')
+      .select('*')
+      .then(({ data, error }) => {
+        if (data) {
+          setEvents(
+            data.map((row) => ({
+              id: String(row.id),
+              title: row.title,
+              location: row.location,
+              date: row.date,
+              time: row.time,
+              description: row.description ?? '',
+              category: row.category,
+              color: row.color,
+              emoji: row.emoji,
+              lat: row.lat,
+              lng: row.lng,
+              attendees: row.attendees,
+              maxAttendees: row.max_attendees,
+            }))
+          );
+        }
+        setEventsLoaded(true);
+      });
+  }, []);
+
+  // ── leaflet html — rebuilt once events are fetched ──
+  const leafletHtml = useMemo(() => buildLeafletHTML(events), [eventsLoaded]);
+
   // ── visible events (used both for map filter and list view) ──
-  const visibleEvents = EVENTS.filter((e) => {
+  const visibleEvents = events.filter((e) => {
     const matchFilter = activeFilter === 'All' || e.category === activeFilter;
     const matchSearch =
       search.trim() === '' ||
@@ -395,14 +347,14 @@ export default function MapScreen() {
     try {
       const msg = JSON.parse(e.nativeEvent.data);
       if (msg.type === 'markerTap') {
-        const found = EVENTS.find((ev) => ev.id === msg.id);
+        const found = events.find((ev) => ev.id === msg.id);
         if (found) openCard(found);
       }
       if (msg.type === 'mapTap') {
         closeCard();
       }
     } catch {}
-  }, []);
+  }, [events]);
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -433,9 +385,10 @@ export default function MapScreen() {
 
       {/* ── leaflet map (hidden in list view to preserve state) ── */}
       <WebView
+        key={eventsLoaded ? 'ready' : 'init'}
         ref={webViewRef}
         style={[StyleSheet.absoluteFillObject, listView && { display: 'none' }]}
-        source={{ html: LEAFLET_HTML, baseUrl: 'https://unpkg.com' }}
+        source={{ html: leafletHtml, baseUrl: 'https://unpkg.com' }}
         originWhitelist={['*']}
         javaScriptEnabled
         domStorageEnabled
