@@ -34,6 +34,36 @@ type EventPin = {
 
 const FILTERS = ['All', 'Basketball', 'Football', 'Gaming', 'Jazz', 'Volleyball'];
 
+const CATEGORY_EMOJI: Record<string, string> = {
+  Basketball: '🏀',
+  Football: '⚽',
+  Gaming: '🎮',
+  Jazz: '🎷',
+  Volleyball: '🏐',
+  Tennis: '🎾',
+  Running: '🏃',
+  Cycling: '🚴',
+  Swimming: '🏊',
+  Hiking: '🥾',
+  Music: '🎵',
+  Art: '🎨',
+};
+
+const CATEGORY_COLOR: Record<string, string> = {
+  Basketball: '#FF6B6B',
+  Football: '#4D96FF',
+  Gaming: '#6BCB77',
+  Jazz: '#FFD93D',
+  Volleyball: '#FF922B',
+  Tennis: '#A8E063',
+  Running: '#F06595',
+  Cycling: '#74C0FC',
+  Swimming: '#38D9A9',
+  Hiking: '#8CE99A',
+  Music: '#DA77F2',
+  Art: '#FFA94D',
+};
+
 // ─── leaflet html ─────────────────────────────────────────────────────────────
 
 function buildLeafletHTML(events: EventPin[]): string {
@@ -248,23 +278,28 @@ export default function MapScreen() {
       .from('events')
       .select('*')
       .then(({ data, error }) => {
+        console.log('[map] events fetch — data:', JSON.stringify(data));
+        console.log('[map] events fetch — error:', JSON.stringify(error));
         if (data) {
           setEvents(
-            data.map((row) => ({
-              id: String(row.id),
-              title: row.title,
-              location: row.location,
-              date: row.date,
-              time: row.time,
-              description: row.description ?? '',
-              category: row.category,
-              color: row.color,
-              emoji: row.emoji,
-              lat: row.lat,
-              lng: row.lng,
-              attendees: row.attendees,
-              maxAttendees: row.max_attendees,
-            }))
+            data.map((row) => {
+              const category: string = row.category ?? 'Other';
+              return {
+                id: String(row.id),
+                title: row.title,
+                location: row.location,
+                date: row.date,
+                time: row.time,
+                description: row.description ?? '',
+                category,
+                color: CATEGORY_COLOR[category] ?? '#3D1F8C',
+                emoji: CATEGORY_EMOJI[category] ?? '📍',
+                lat: row.latitude,
+                lng: row.longitude,
+                attendees: 0,
+                maxAttendees: row.max_attendees ?? 20,
+              };
+            })
           );
         }
         setEventsLoaded(true);
