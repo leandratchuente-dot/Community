@@ -271,39 +271,59 @@ export default function MapScreen() {
   const [listView, setListView] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<EventPin | null>(null);
   const [cardAnim] = useState(new Animated.Value(0));
+  const [joinedEventIds, setJoinedEventIds] = useState<Set<string>>(new Set());
+  const [joiningId, setJoiningId] = useState<string | null>(null);
 
-  // ── fetch events from Supabase ──
+  // ── fetch events + attendee counts from Supabase ──
   useEffect(() => {
-    supabase
-      .from('events')
-      .select('*')
-      .then(({ data, error }) => {
-        console.log('[map] events fetch — data:', JSON.stringify(data));
-        console.log('[map] events fetch — error:', JSON.stringify(error));
-        if (data) {
-          setEvents(
-            data.map((row) => {
-              const category: string = row.category ?? 'Other';
-              return {
-                id: String(row.id),
-                title: row.title,
-                location: row.location,
-                date: row.date,
-                time: row.time,
-                description: row.description ?? '',
-                category,
-                color: CATEGORY_COLOR[category] ?? '#3D1F8C',
-                emoji: CATEGORY_EMOJI[category] ?? '📍',
-                lat: row.latitude,
-                lng: row.longitude,
-                attendees: 0,
-                maxAttendees: row.max_attendees ?? 20,
-              };
-            })
-          );
+    async function load() {
+      const [eventsRes, attendeesRes, { data: { session } }] = await Promise.all([
+        supabase.from('events').select('*'),
+        supabase.from('event_attendees').select('event_id, user_id'),
+        supabase.auth.getSession(),
+      ]);
+
+      const countMap: Record<string, number> = {};
+      const userJoined = new Set<string>();
+
+      if (attendeesRes.data) {
+        for (const row of attendeesRes.data) {
+          const eid = String(row.event_id);
+          countMap[eid] = (countMap[eid] ?? 0) + 1;
+          if (session && row.user_id === session.user.id) {
+            userJoined.add(eid);
+          }
         }
-        setEventsLoaded(true);
-      });
+      }
+
+      setJoinedEventIds(userJoined);
+
+      if (eventsRes.data) {
+        setEvents(
+          eventsRes.data.map((row) => {
+            const category: string = row.category ?? 'Other';
+            const eid = String(row.id);
+            return {
+              id: eid,
+              title: row.title,
+              location: row.location,
+              date: row.date,
+              time: row.time,
+              description: row.description ?? '',
+              category,
+              color: CATEGORY_COLOR[category] ?? '#3D1F8C',
+              emoji: CATEGORY_EMOJI[category] ?? '📍',
+              lat: row.latitude,
+              lng: row.longitude,
+              attendees: countMap[eid] ?? 0,
+              maxAttendees: row.max_attendees ?? 20,
+            };
+          })
+        );
+      }
+      setEventsLoaded(true);
+    }
+    load();
   }, []);
 
   // ── leaflet html — rebuilt once events are fetched ──
@@ -397,12 +417,54 @@ export default function MapScreen() {
   }
 
   async function handleJoinEvent() {
+    if (!selectedEvent) return;
+
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       router.push('/profile-create');
       return;
     }
-    // TODO: record join in Supabase once events table exists
+
+    const eventId = selectedEvent.id;
+    const userId = session.user.id;
+    const isJoined = joinedEventIds.has(eventId);
+
+    setJoiningId(eventId);
+    try {
+      if (isJoined) {
+        const { error } = await supabase
+          .from('event_attendees')
+          .delete()
+          .eq('event_id', eventId)
+          .eq('user_id', userId);
+
+        if (!error) {
+          const next = new Set(joinedEventIds);
+          next.delete(eventId);
+          setJoinedEventIds(next);
+          const update = (e: EventPin) =>
+            e.id === eventId ? { ...e, attendees: Math.max(0, e.attendees - 1) } : e;
+          setEvents((prev) => prev.map(update));
+          setSelectedEvent((prev) => (prev?.id === eventId ? update(prev) : prev));
+        }
+      } else {
+        const { error } = await supabase
+          .from('event_attendees')
+          .insert({ event_id: eventId, user_id: userId });
+
+        if (!error) {
+          const next = new Set(joinedEventIds);
+          next.add(eventId);
+          setJoinedEventIds(next);
+          const update = (e: EventPin) =>
+            e.id === eventId ? { ...e, attendees: e.attendees + 1 } : e;
+          setEvents((prev) => prev.map(update));
+          setSelectedEvent((prev) => (prev?.id === eventId ? update(prev) : prev));
+        }
+      }
+    } finally {
+      setJoiningId(null);
+    }
   }
 
   const cardTranslateY = cardAnim.interpolate({
@@ -413,6 +475,9 @@ export default function MapScreen() {
   const attendeePct = selectedEvent
     ? Math.min(selectedEvent.attendees / selectedEvent.maxAttendees, 1)
     : 0;
+
+  const isJoined = selectedEvent ? joinedEventIds.has(selectedEvent.id) : false;
+  const isJoining = selectedEvent?.id === joiningId;
 
   return (
     <View style={styles.container}>
@@ -583,11 +648,17 @@ export default function MapScreen() {
           </View>
 
           <TouchableOpacity
-            style={[styles.cardButton, { backgroundColor: selectedEvent.color }]}
+            style={[
+              styles.cardButton,
+              isJoined ? styles.cardButtonLeave : { backgroundColor: selectedEvent.color },
+            ]}
             onPress={handleJoinEvent}
             activeOpacity={0.85}
+            disabled={isJoining}
           >
-            <Text style={styles.cardButtonText}>Join Event</Text>
+            <Text style={styles.cardButtonText}>
+              {isJoining ? '…' : isJoined ? 'Leave Event' : 'Join Event'}
+            </Text>
           </TouchableOpacity>
         </Animated.View>
       )}
@@ -836,6 +907,9 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderRadius: 50,
     alignItems: 'center',
+  },
+  cardButtonLeave: {
+    backgroundColor: '#EF4444',
   },
   cardButtonText: {
     fontSize: 16,
