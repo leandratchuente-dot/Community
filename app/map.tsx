@@ -30,6 +30,7 @@ type EventPin = {
   lng: number;
   attendees: number;
   maxAttendees: number;
+  createdBy: string | null;
 };
 
 const FILTERS = ['All', 'Basketball', 'Football', 'Gaming', 'Jazz', 'Volleyball', 'Photography', 'Hiking', 'Cooking', 'Music', 'Art'];
@@ -276,6 +277,7 @@ export default function MapScreen() {
   const [selectedEvent, setSelectedEvent] = useState<EventPin | null>(null);
   const [cardAnim] = useState(new Animated.Value(0));
   const [joinedEventIds, setJoinedEventIds] = useState<Set<string>>(new Set());
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [joiningId, setJoiningId] = useState<string | null>(null);
 
   // ── fetch events + attendee counts from Supabase ──
@@ -301,6 +303,7 @@ export default function MapScreen() {
       }
 
       setJoinedEventIds(userJoined);
+      if (session) setCurrentUserId(session.user.id);
 
       if (eventsRes.data) {
         setEvents(
@@ -321,6 +324,7 @@ export default function MapScreen() {
               lng: row.longitude,
               attendees: countMap[eid] ?? 0,
               maxAttendees: row.max_attendees ?? 20,
+              createdBy: row.created_by ?? null,
             };
           })
         );
@@ -476,6 +480,20 @@ export default function MapScreen() {
     } finally {
       setJoiningId(null);
     }
+  }
+
+  async function handleDeleteEvent() {
+    if (!selectedEvent) return;
+    const { error } = await supabase
+      .from('events')
+      .delete()
+      .eq('id', selectedEvent.id);
+    if (error) {
+      console.log('[DeleteEvent] error —', error);
+      return;
+    }
+    setEvents((prev) => prev.filter((e) => e.id !== selectedEvent.id));
+    closeCard();
   }
 
   const cardTranslateY = cardAnim.interpolate({
@@ -680,6 +698,16 @@ export default function MapScreen() {
               {isJoining ? '…' : isJoined ? 'Leave Event' : 'Join Event'}
             </Text>
           </TouchableOpacity>
+
+          {currentUserId && selectedEvent.createdBy === currentUserId && (
+            <TouchableOpacity
+              style={styles.cardButtonDelete}
+              onPress={handleDeleteEvent}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.cardButtonText}>Delete Event</Text>
+            </TouchableOpacity>
+          )}
         </Animated.View>
       )}
     </View>
@@ -930,6 +958,13 @@ const styles = StyleSheet.create({
   },
   cardButtonLeave: {
     backgroundColor: '#EF4444',
+  },
+  cardButtonDelete: {
+    marginTop: 4,
+    paddingVertical: 15,
+    borderRadius: 50,
+    alignItems: 'center',
+    backgroundColor: '#1F2937',
   },
   cardButtonText: {
     fontSize: 16,
