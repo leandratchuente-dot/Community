@@ -73,7 +73,7 @@ export default function ProfileCreateScreen() {
       await flushPendingInterests(data.user.id);
     }
     setLoading(false);
-    router.replace('/map');
+    router.replace('/join-communities');
   }
 
   const initial = fullName.trim().charAt(0).toUpperCase() || '?';
