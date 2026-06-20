@@ -11,7 +11,7 @@ import {
 import { WebView, WebViewMessageEvent } from 'react-native-webview';
 import * as Location from 'expo-location';
 import { StatusBar } from 'expo-status-bar';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 
 // ─── types ───────────────────────────────────────────────────────────────────
@@ -280,59 +280,87 @@ export default function MapScreen() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [joiningId, setJoiningId] = useState<string | null>(null);
 
-  // ── fetch events + attendee counts from Supabase ──
-  useEffect(() => {
-    async function load() {
-      const [eventsRes, attendeesRes, { data: { session } }] = await Promise.all([
-        supabase.from('events').select('*'),
-        supabase.from('event_attendees').select('event_id, user_id'),
-        supabase.auth.getSession(),
-      ]);
+  // tracks which event IDs are already rendered as Leaflet markers
+  const leafletEventIdsRef = useRef<Set<string>>(new Set());
+  const isInitialFocus = useRef(true);
 
-      const countMap: Record<string, number> = {};
-      const userJoined = new Set<string>();
+  // ── shared fetch + process logic ──
+  async function fetchEvents(isRefresh = false) {
+    const [eventsRes, attendeesRes, { data: { session } }] = await Promise.all([
+      supabase.from('events').select('*'),
+      supabase.from('event_attendees').select('event_id, user_id'),
+      supabase.auth.getSession(),
+    ]);
 
-      if (attendeesRes.data) {
-        for (const row of attendeesRes.data) {
-          const eid = String(row.event_id);
-          countMap[eid] = (countMap[eid] ?? 0) + 1;
-          if (session && row.user_id === session.user.id) {
-            userJoined.add(eid);
-          }
+    const countMap: Record<string, number> = {};
+    const userJoined = new Set<string>();
+
+    if (attendeesRes.data) {
+      for (const row of attendeesRes.data) {
+        const eid = String(row.event_id);
+        countMap[eid] = (countMap[eid] ?? 0) + 1;
+        if (session && row.user_id === session.user.id) {
+          userJoined.add(eid);
         }
       }
-
-      setJoinedEventIds(userJoined);
-      if (session) setCurrentUserId(session.user.id);
-
-      if (eventsRes.data) {
-        setEvents(
-          eventsRes.data.map((row) => {
-            const category: string = row.category ?? 'Other';
-            const eid = String(row.id);
-            return {
-              id: eid,
-              title: row.title,
-              location: row.location,
-              date: row.date,
-              time: row.time,
-              description: row.description ?? '',
-              category,
-              color: CATEGORY_COLOR[category] ?? '#0284C7',
-              emoji: CATEGORY_EMOJI[category] ?? '📍',
-              lat: row.latitude,
-              lng: row.longitude,
-              attendees: countMap[eid] ?? 0,
-              maxAttendees: row.max_attendees ?? 20,
-              createdBy: row.created_by ?? null,
-            };
-          })
-        );
-      }
-      setEventsLoaded(true);
     }
-    load();
-  }, []);
+
+    setJoinedEventIds(userJoined);
+    if (session) setCurrentUserId(session.user.id);
+
+    if (eventsRes.data) {
+      const processed: EventPin[] = eventsRes.data.map((row) => {
+        const category: string = row.category ?? 'Other';
+        const eid = String(row.id);
+        return {
+          id: eid,
+          title: row.title,
+          location: row.location,
+          date: row.date,
+          time: row.time,
+          description: row.description ?? '',
+          category,
+          color: CATEGORY_COLOR[category] ?? '#0284C7',
+          emoji: CATEGORY_EMOJI[category] ?? '📍',
+          lat: row.latitude,
+          lng: row.longitude,
+          attendees: countMap[eid] ?? 0,
+          maxAttendees: row.max_attendees ?? 20,
+          createdBy: row.created_by ?? null,
+        };
+      });
+
+      if (isRefresh) {
+        // inject only events that aren't already on the map
+        for (const ev of processed) {
+          if (!leafletEventIdsRef.current.has(ev.id)) {
+            injectAddMarker(ev);
+            leafletEventIdsRef.current.add(ev.id);
+          }
+        }
+      } else {
+        leafletEventIdsRef.current = new Set(processed.map((e) => e.id));
+      }
+
+      setEvents(processed);
+    }
+
+    if (!isRefresh) setEventsLoaded(true);
+  }
+
+  // ── initial load ──
+  useEffect(() => { fetchEvents(false); }, []);
+
+  // ── refresh when returning from create-event (or any push screen) ──
+  useFocusEffect(
+    useCallback(() => {
+      if (isInitialFocus.current) {
+        isInitialFocus.current = false;
+        return;
+      }
+      fetchEvents(true);
+    }, [])
+  );
 
   // ── leaflet html — rebuilt once events are fetched ──
   const leafletHtml = useMemo(() => buildLeafletHTML(events), [eventsLoaded]);
@@ -360,6 +388,42 @@ export default function MapScreen() {
     webViewRef.current?.injectJavaScript(
       `handleMessage(${JSON.stringify(JSON.stringify({ type: 'panTo', lat, lng, zoom }))});true;`
     );
+  }
+
+  // ── leaflet marker helpers ──
+  function injectAddMarker(ev: EventPin) {
+    const data = JSON.stringify({
+      id: ev.id, emoji: ev.emoji, color: ev.color,
+      lat: ev.lat, lng: ev.lng, title: ev.title,
+      attendees: ev.attendees, maxAttendees: ev.maxAttendees,
+    });
+    webViewRef.current?.injectJavaScript(`
+      (function() {
+        var ev = ${data};
+        if (!markers[ev.id]) {
+          var m = L.marker([ev.lat, ev.lng], {
+            icon: makeIcon(ev.emoji, ev.color, ev.title, ev.attendees, ev.maxAttendees)
+          });
+          m.on('click', function(e) {
+            L.DomEvent.stopPropagation(e);
+            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'markerTap', id: ev.id }));
+          });
+          clusterGroup.addLayer(m);
+          markers[ev.id] = m;
+        }
+      })();
+      true;
+    `);
+  }
+
+  function injectRemoveMarker(eventId: string) {
+    webViewRef.current?.injectJavaScript(`
+      if (markers["${eventId}"]) {
+        clusterGroup.removeLayer(markers["${eventId}"]);
+        delete markers["${eventId}"];
+      }
+      true;
+    `);
   }
 
   // ── geocode address on search submit ──
@@ -492,6 +556,8 @@ export default function MapScreen() {
       console.log('[DeleteEvent] error —', error);
       return;
     }
+    injectRemoveMarker(selectedEvent.id);
+    leafletEventIdsRef.current.delete(selectedEvent.id);
     setEvents((prev) => prev.filter((e) => e.id !== selectedEvent.id));
     closeCard();
   }

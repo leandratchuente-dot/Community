@@ -118,7 +118,7 @@ export default function CreateEventScreen() {
       Alert.alert('Could not create event', error.message);
       return;
     }
-    router.replace('/map');
+    router.back();
   }
 
   const dayCount = daysInMonth(selMonth, selYear);
