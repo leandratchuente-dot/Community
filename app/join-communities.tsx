@@ -45,14 +45,18 @@ export default function JoinCommunitiesScreen() {
   useEffect(() => {
     async function load() {
       const { data: { session } } = await supabase.auth.getSession();
+      console.log('[JoinCommunities] session user id:', session?.user.id ?? 'none');
       if (!session) { router.replace('/map'); return; }
 
       // Resolve interest names — Supabase first, AsyncStorage as fallback
       let interestNames: string[] = [];
-      const { data: uiData } = await supabase
+      const { data: uiData, error: uiError } = await supabase
         .from('user_interests')
         .select('interests(name)')
         .eq('user_id', session.user.id);
+
+      console.log('[JoinCommunities] user_interests data:', JSON.stringify(uiData));
+      console.log('[JoinCommunities] user_interests error:', uiError);
 
       if (uiData && uiData.length > 0) {
         interestNames = uiData
@@ -62,22 +66,31 @@ export default function JoinCommunitiesScreen() {
 
       if (interestNames.length === 0) {
         const raw = await AsyncStorage.getItem('pending_interest_names');
+        console.log('[JoinCommunities] AsyncStorage fallback:', raw);
         if (raw) interestNames = JSON.parse(raw);
       }
+
+      console.log('[JoinCommunities] resolved interest names:', interestNames);
 
       // Fetch communities whose category matches an interest
       const commQuery = supabase
         .from('communities')
         .select('id, name, description, category');
-      const { data: commData } = interestNames.length > 0
+      const { data: commData, error: commError } = interestNames.length > 0
         ? await commQuery.in('category', interestNames)
         : await commQuery;
 
+      console.log('[JoinCommunities] communities data:', JSON.stringify(commData));
+      console.log('[JoinCommunities] communities error:', commError);
+
       // Check which communities this user has already joined
-      const { data: memberData } = await supabase
+      const { data: memberData, error: memberError } = await supabase
         .from('community_members')
         .select('community_id')
         .eq('user_id', session.user.id);
+
+      console.log('[JoinCommunities] community_members data:', JSON.stringify(memberData));
+      console.log('[JoinCommunities] community_members error:', memberError);
 
       setJoinedIds(
         new Set((memberData ?? []).map((r: any) => String(r.community_id)))
