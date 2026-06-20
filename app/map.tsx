@@ -33,7 +33,45 @@ type EventPin = {
   createdBy: string | null;
 };
 
-const FILTERS = ['All', 'Basketball', 'Football', 'Gaming', 'Jazz', 'Volleyball', 'Photography', 'Hiking', 'Cooking', 'Music', 'Art'];
+type TabFilter = 'today' | 'week' | 'communities';
+
+const MONTH_MAP: Record<string, number> = {
+  Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
+  Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11,
+};
+
+function parseEventDate(dateStr: string): Date | null {
+  const parts = dateStr.trim().split(' ');
+  if (parts.length !== 3) return null;
+  const day = parseInt(parts[0], 10);
+  const month = MONTH_MAP[parts[1]];
+  const year = parseInt(parts[2], 10);
+  if (isNaN(day) || month === undefined || isNaN(year)) return null;
+  return new Date(year, month, day);
+}
+
+function isToday(dateStr: string): boolean {
+  const d = parseEventDate(dateStr);
+  if (!d) return false;
+  const now = new Date();
+  return d.getFullYear() === now.getFullYear()
+    && d.getMonth() === now.getMonth()
+    && d.getDate() === now.getDate();
+}
+
+function isThisWeek(dateStr: string): boolean {
+  const d = parseEventDate(dateStr);
+  if (!d) return false;
+  const now = new Date();
+  const dow = now.getDay(); // 0 = Sun
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - (dow === 0 ? 6 : dow - 1));
+  monday.setHours(0, 0, 0, 0);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23, 59, 59, 999);
+  return d >= monday && d <= sunday;
+}
 
 const CATEGORY_EMOJI: Record<string, string> = {
   Basketball: '🏀',
@@ -271,7 +309,8 @@ export default function MapScreen() {
 
   const [events, setEvents] = useState<EventPin[]>([]);
   const [eventsLoaded, setEventsLoaded] = useState(false);
-  const [activeFilter, setActiveFilter] = useState('All');
+  const [activeFilter, setActiveFilter] = useState<TabFilter>('today');
+  const [myCommunityCategories, setMyCommunityCategories] = useState<string[]>([]);
   const [search, setSearch] = useState('');
   const [listView, setListView] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<EventPin | null>(null);
@@ -306,7 +345,17 @@ export default function MapScreen() {
     }
 
     setJoinedEventIds(userJoined);
-    if (session) setCurrentUserId(session.user.id);
+    if (session) {
+      setCurrentUserId(session.user.id);
+      const { data: memberComms } = await supabase
+        .from('community_members')
+        .select('communities(interests(name))')
+        .eq('user_id', session.user.id);
+      const cats = (memberComms ?? [])
+        .map((r: any) => r.communities?.interests?.name as string | undefined)
+        .filter((n): n is string => Boolean(n));
+      setMyCommunityCategories(cats);
+    }
 
     if (eventsRes.data) {
       const processed: EventPin[] = eventsRes.data.map((row) => {
@@ -367,7 +416,16 @@ export default function MapScreen() {
 
   // ── visible events (used both for map filter and list view) ──
   const visibleEvents = events.filter((e) => {
-    const matchFilter = activeFilter === 'All' || e.category === activeFilter;
+    let matchFilter: boolean;
+    if (activeFilter === 'today') {
+      matchFilter = isToday(e.date);
+    } else if (activeFilter === 'week') {
+      matchFilter = isThisWeek(e.date);
+    } else {
+      matchFilter = myCommunityCategories.length > 0
+        ? myCommunityCategories.includes(e.category)
+        : false;
+    }
     const matchSearch =
       search.trim() === '' ||
       e.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -381,7 +439,7 @@ export default function MapScreen() {
     webViewRef.current?.injectJavaScript(
       `handleMessage(${JSON.stringify(JSON.stringify({ type: 'filter', ids }))});true;`
     );
-  }, [activeFilter, search]);
+  }, [activeFilter, search, myCommunityCategories]);
 
   // ── pan helper ──
   function panMapTo(lat: number, lng: number, zoom = 15) {
@@ -601,7 +659,25 @@ export default function MapScreen() {
           >
             {visibleEvents.length === 0 ? (
               <View style={styles.listEmpty}>
-                <Text style={styles.listEmptyText}>No events match your filter.</Text>
+                {activeFilter === 'today' ? (
+                  <>
+                    <Text style={styles.listEmptyEmoji}>📭</Text>
+                    <Text style={styles.listEmptyTitle}>No events today</Text>
+                    {currentUserId && (
+                      <TouchableOpacity
+                        style={styles.listCreateBtn}
+                        onPress={() => router.push('/create-event')}
+                        activeOpacity={0.85}
+                      >
+                        <Text style={styles.listCreateBtnText}>Create an event</Text>
+                      </TouchableOpacity>
+                    )}
+                  </>
+                ) : activeFilter === 'communities' && myCommunityCategories.length === 0 ? (
+                  <Text style={styles.listEmptyText}>Join communities to see their events here.</Text>
+                ) : (
+                  <Text style={styles.listEmptyText}>No events match your filter.</Text>
+                )}
               </View>
             ) : (
               visibleEvents.map((item) => (
@@ -681,29 +757,46 @@ export default function MapScreen() {
           </TouchableOpacity>
         </View>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filtersRow}
-          pointerEvents="auto"
-        >
-          {FILTERS.map((f) => {
-            const active = f === activeFilter;
+        <View style={styles.tabRow} pointerEvents="auto">
+          {([
+            { key: 'today',       label: 'Today',          icon: '📅' },
+            { key: 'week',        label: 'This week',      icon: '📅' },
+            { key: 'communities', label: 'My communities', icon: '👥' },
+          ] as { key: TabFilter; label: string; icon: string }[]).map(({ key, label, icon }) => {
+            const active = activeFilter === key;
             return (
               <TouchableOpacity
-                key={f}
-                style={[styles.filterChip, active && styles.filterChipActive]}
-                onPress={() => setActiveFilter(f)}
+                key={key}
+                style={[styles.tab, active && styles.tabActive]}
+                onPress={() => setActiveFilter(key)}
                 activeOpacity={0.75}
               >
-                <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>
-                  {f}
-                </Text>
+                <Text style={styles.tabIcon}>{icon}</Text>
+                <Text style={[styles.tabText, active && styles.tabTextActive]}>{label}</Text>
               </TouchableOpacity>
             );
           })}
-        </ScrollView>
+        </View>
       </View>
+
+      {/* ── "No events today" overlay on the map ── */}
+      {!listView && activeFilter === 'today' && eventsLoaded && visibleEvents.length === 0 && (
+        <View style={styles.emptyOverlay} pointerEvents="box-none">
+          <View style={styles.emptyCard} pointerEvents="auto">
+            <Text style={styles.emptyEmoji}>📭</Text>
+            <Text style={styles.emptyTitle}>No events today</Text>
+            {currentUserId && (
+              <TouchableOpacity
+                style={styles.emptyCreateBtn}
+                onPress={() => router.push('/create-event')}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.emptyCreateBtnText}>Create an event</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      )}
 
       {/* ── event detail bottom panel ── */}
       {selectedEvent && (
@@ -800,10 +893,33 @@ const styles = StyleSheet.create({
   listEmpty: {
     paddingTop: 40,
     alignItems: 'center',
+    gap: 10,
+  },
+  listEmptyEmoji: {
+    fontSize: 36,
+  },
+  listEmptyTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111827',
   },
   listEmptyText: {
-    fontSize: 15,
+    fontSize: 14,
     color: '#9CA3AF',
+    textAlign: 'center',
+    paddingHorizontal: 16,
+  },
+  listCreateBtn: {
+    marginTop: 4,
+    backgroundColor: '#0284C7',
+    paddingVertical: 11,
+    paddingHorizontal: 24,
+    borderRadius: 50,
+  },
+  listCreateBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   listItem: {
     flexDirection: 'row',
@@ -908,33 +1024,85 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEE2E2',
   },
   iconBtnText: { fontSize: 18 },
-  filtersRow: {
-    gap: 8,
-    paddingBottom: 4,
+  tabRow: {
+    flexDirection: 'row',
+    gap: 7,
   },
-  filterChip: {
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
     backgroundColor: '#FFFFFF',
-    paddingVertical: 7,
-    paddingHorizontal: 16,
     borderRadius: 50,
-    borderWidth: 1.5,
-    borderColor: 'transparent',
+    paddingVertical: 9,
+    paddingHorizontal: 6,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 2,
   },
-  filterChipActive: {
+  tabActive: {
     backgroundColor: '#0284C7',
-    borderColor: '#0284C7',
   },
-  filterChipText: {
-    fontSize: 13,
-    fontWeight: '600',
+  tabIcon: {
+    fontSize: 12,
+  },
+  tabText: {
+    fontSize: 11,
+    fontWeight: '700',
     color: '#374151',
   },
-  filterChipTextActive: { color: '#FFFFFF' },
+  tabTextActive: {
+    color: '#FFFFFF',
+  },
+  /* ── no events today overlay ── */
+  emptyOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  emptyCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 32,
+    alignItems: 'center',
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 8,
+    width: '100%',
+  },
+  emptyEmoji: {
+    fontSize: 40,
+    marginBottom: 4,
+  },
+  emptyTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#111827',
+  },
+  emptyCreateBtn: {
+    marginTop: 8,
+    backgroundColor: '#0284C7',
+    paddingVertical: 12,
+    paddingHorizontal: 28,
+    borderRadius: 50,
+  },
+  emptyCreateBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
   /* ── event detail card ── */
   card: {
     position: 'absolute',

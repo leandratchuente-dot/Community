@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { supabase } from '@/lib/supabase';
@@ -45,62 +44,45 @@ export default function JoinCommunitiesScreen() {
   useEffect(() => {
     async function load() {
       const { data: { session } } = await supabase.auth.getSession();
-      console.log('[JoinCommunities] session user id:', session?.user.id ?? 'none');
       if (!session) { router.replace('/map'); return; }
 
-      // Resolve interest names — Supabase first, AsyncStorage as fallback
-      let interestNames: string[] = [];
+      // 1. Get the user's interest IDs
       const { data: uiData, error: uiError } = await supabase
         .from('user_interests')
-        .select('interests(name)')
+        .select('interest_id')
         .eq('user_id', session.user.id);
+      console.log('[JoinCommunities] user_interests:', JSON.stringify(uiData), uiError);
 
-      console.log('[JoinCommunities] user_interests data:', JSON.stringify(uiData));
-      console.log('[JoinCommunities] user_interests error:', uiError);
+      const interestIds = (uiData ?? []).map((r: any) => r.interest_id as number);
 
-      if (uiData && uiData.length > 0) {
-        interestNames = uiData
-          .map((r: any) => r.interests?.name as string | undefined)
-          .filter((n): n is string => Boolean(n));
-      }
-
-      if (interestNames.length === 0) {
-        const raw = await AsyncStorage.getItem('pending_interest_names');
-        console.log('[JoinCommunities] AsyncStorage fallback:', raw);
-        if (raw) interestNames = JSON.parse(raw);
-      }
-
-      console.log('[JoinCommunities] resolved interest names:', interestNames);
-
-      // Fetch communities whose category matches an interest
-      const commQuery = supabase
-        .from('communities')
-        .select('id, name, description, category');
-      const { data: commData, error: commError } = interestNames.length > 0
-        ? await commQuery.in('category', interestNames)
-        : await commQuery;
-
-      console.log('[JoinCommunities] communities data:', JSON.stringify(commData));
-      console.log('[JoinCommunities] communities error:', commError);
-
-      // Check which communities this user has already joined
+      // 2. Get community IDs the user has already joined
       const { data: memberData, error: memberError } = await supabase
         .from('community_members')
         .select('community_id')
         .eq('user_id', session.user.id);
+      console.log('[JoinCommunities] community_members:', JSON.stringify(memberData), memberError);
 
-      console.log('[JoinCommunities] community_members data:', JSON.stringify(memberData));
-      console.log('[JoinCommunities] community_members error:', memberError);
+      const alreadyJoined = new Set((memberData ?? []).map((r: any) => String(r.community_id)));
 
-      setJoinedIds(
-        new Set((memberData ?? []).map((r: any) => String(r.community_id)))
-      );
+      // 3. Fetch communities matching the user's interest IDs
+      const { data: commData, error: commError } = interestIds.length > 0
+        ? await supabase
+            .from('communities')
+            .select('id, name, description, interest_id, interests(name)')
+            .in('interest_id', interestIds)
+        : { data: [], error: null };
+      console.log('[JoinCommunities] communities:', JSON.stringify(commData), commError);
+
+      // 4. Exclude communities already joined
+      const unjoined = (commData ?? []).filter((r: any) => !alreadyJoined.has(String(r.id)));
+
+      setJoinedIds(alreadyJoined);
       setCommunities(
-        (commData ?? []).map((r: any) => ({
+        unjoined.map((r: any) => ({
           id: String(r.id),
           name: r.name,
           description: r.description ?? null,
-          category: r.category ?? null,
+          category: (r.interests as any)?.name ?? null,
         }))
       );
       setLoading(false);
