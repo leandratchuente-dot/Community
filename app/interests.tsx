@@ -3,6 +3,7 @@ import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SEED_INTERESTS, savePendingInterestNames } from '@/lib/interests';
+import { useTheme } from '@/lib/theme';
 
 const INTERESTS = SEED_INTERESTS.map((item, index) => ({
   id: String(index + 1),
@@ -11,6 +12,7 @@ const INTERESTS = SEED_INTERESTS.map((item, index) => ({
 
 export default function InterestSelectionScreen() {
   const router = useRouter();
+  const t = useTheme();
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   function toggle(id: string) {
@@ -34,7 +36,7 @@ export default function InterestSelectionScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: t.brandBg }]}>
       <StatusBar style="light" />
 
       <FlatList
@@ -48,12 +50,16 @@ export default function InterestSelectionScreen() {
           const isSelected = selected.has(item.id);
           return (
             <TouchableOpacity
-              style={[styles.tag, isSelected && styles.tagSelected]}
+              style={[
+                styles.tag,
+                { backgroundColor: t.surface },
+                isSelected && { backgroundColor: t.primaryLight, borderColor: '#0EA5E9' },
+              ]}
               onPress={() => toggle(item.id)}
               activeOpacity={0.75}
             >
               <Text style={styles.tagEmoji}>{item.emoji}</Text>
-              <Text style={[styles.tagLabel, isSelected && styles.tagLabelSelected]}>
+              <Text style={[styles.tagLabel, { color: t.text }, isSelected && { color: t.isDark ? '#38BDF8' : '#0369A1' }]}>
                 {item.label ?? item.name}
               </Text>
             </TouchableOpacity>

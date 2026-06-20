@@ -3,9 +3,11 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { supabase } from '@/lib/supabase';
+import { useTheme } from '@/lib/theme';
 
 export default function WelcomeScreen() {
   const router = useRouter();
+  const t = useTheme();
 
   // skip welcome for users who are already signed in
   useEffect(() => {
@@ -15,7 +17,7 @@ export default function WelcomeScreen() {
   }, []);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: t.brandBg }]}>
       <StatusBar style="light" />
 
       {/* centered title */}

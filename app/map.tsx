@@ -13,6 +13,7 @@ import * as Location from 'expo-location';
 import { StatusBar } from 'expo-status-bar';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabase';
+import { useTheme, type AppTheme } from '@/lib/theme';
 
 // ─── types ───────────────────────────────────────────────────────────────────
 
@@ -109,7 +110,7 @@ const CATEGORY_COLOR: Record<string, string> = {
 
 // ─── leaflet html ─────────────────────────────────────────────────────────────
 
-function buildLeafletHTML(events: EventPin[]): string {
+function buildLeafletHTML(events: EventPin[], tileUrl: string, isDark: boolean): string {
   const eventsJson = JSON.stringify(
     events.map(({ id, emoji, color, lat, lng, title, attendees, maxAttendees }) => ({
       id,
@@ -158,8 +159,7 @@ function buildLeafletHTML(events: EventPin[]): string {
   <script>
     var map = L.map('map', { zoomControl: false }).setView([49.0134, 8.4014], 13);
 
-    // CartoDB Positron — clean white/beige minimal style
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    L.tileLayer('${tileUrl}', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
       subdomains: 'abcd',
       maxZoom: 19
@@ -201,11 +201,11 @@ function buildLeafletHTML(events: EventPin[]): string {
         '<div style="display:flex;flex-direction:column;align-items:center;pointer-events:none;">',
           // event name label
           '<div style="',
-            'background:rgba(255,255,255,0.96);',
+            'background:${isDark ? 'rgba(30,30,30,0.92)' : 'rgba(255,255,255,0.96)'};',
             'border-radius:8px;',
             'padding:2px 8px;',
             'font-size:10px;font-weight:700;',
-            'color:#111827;',
+            'color:${isDark ? '#F1F5F9' : '#111827'};',
             'white-space:nowrap;',
             'box-shadow:0 1px 5px rgba(0,0,0,0.16);',
             'margin-bottom:3px;',
@@ -305,6 +305,7 @@ function buildLeafletHTML(events: EventPin[]): string {
 
 export default function MapScreen() {
   const router = useRouter();
+  const t = useTheme();
   const webViewRef = useRef<WebView>(null);
 
   const [events, setEvents] = useState<EventPin[]>([]);
@@ -322,6 +323,8 @@ export default function MapScreen() {
   // tracks which event IDs are already rendered as Leaflet markers
   const leafletEventIdsRef = useRef<Set<string>>(new Set());
   const isInitialFocus = useRef(true);
+
+  const styles = useMemo(() => makeStyles(t), [t.isDark]);
 
   // ── shared fetch + process logic ──
   async function fetchEvents(isRefresh = false) {
@@ -411,8 +414,11 @@ export default function MapScreen() {
     }, [])
   );
 
-  // ── leaflet html — rebuilt once events are fetched ──
-  const leafletHtml = useMemo(() => buildLeafletHTML(events), [eventsLoaded]);
+  // ── leaflet html — rebuilt once events are fetched or theme changes ──
+  const leafletHtml = useMemo(
+    () => buildLeafletHTML(events, t.tileUrl, t.isDark),
+    [eventsLoaded, t.isDark],
+  );
 
   // ── visible events (used both for map filter and list view) ──
   const visibleEvents = events.filter((e) => {
@@ -634,11 +640,11 @@ export default function MapScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="dark" />
+      <StatusBar style={t.isDark ? 'light' : 'dark'} />
 
       {/* ── leaflet map (hidden in list view to preserve state) ── */}
       <WebView
-        key={eventsLoaded ? 'ready' : 'init'}
+        key={`${eventsLoaded ? 'ready' : 'init'}-${t.isDark ? 'dark' : 'light'}`}
         ref={webViewRef}
         style={[StyleSheet.absoluteFillObject, listView && { display: 'none' }]}
         source={{ html: leafletHtml, baseUrl: 'https://unpkg.com' }}
@@ -744,6 +750,11 @@ export default function MapScreen() {
             activeOpacity={0.8}
           >
             <Text style={styles.iconBtnText}>{listView ? '🗺️' : '☰'}</Text>
+          </TouchableOpacity>
+
+          {/* theme toggle */}
+          <TouchableOpacity style={styles.iconBtn} onPress={t.toggle} activeOpacity={0.8}>
+            <Text style={styles.iconBtnText}>{t.isDark ? '☀️' : '🌙'}</Text>
           </TouchableOpacity>
 
           {/* locate me */}
@@ -875,344 +886,346 @@ export default function MapScreen() {
 
 // ─── styles ──────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F5F0',
-  },
-  /* ── list view ── */
-  listContainer: {
-    backgroundColor: '#F8F8F6',
-  },
-  listContent: {
-    paddingTop: 168,
-    paddingHorizontal: 16,
-    paddingBottom: 32,
-    gap: 10,
-  },
-  listEmpty: {
-    paddingTop: 40,
-    alignItems: 'center',
-    gap: 10,
-  },
-  listEmptyEmoji: {
-    fontSize: 36,
-  },
-  listEmptyTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  listEmptyText: {
-    fontSize: 14,
-    color: '#9CA3AF',
-    textAlign: 'center',
-    paddingHorizontal: 16,
-  },
-  listCreateBtn: {
-    marginTop: 4,
-    backgroundColor: '#0284C7',
-    paddingVertical: 11,
-    paddingHorizontal: 24,
-    borderRadius: 50,
-  },
-  listCreateBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  listItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 14,
-    gap: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.07,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  listItemIcon: {
-    width: 46,
-    height: 46,
-    borderRadius: 13,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  listItemEmoji: { fontSize: 24 },
-  listItemInfo: { flex: 1, gap: 3 },
-  listItemTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  listItemSub: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    fontWeight: '500',
-  },
-  listItemRight: { alignItems: 'flex-end', gap: 2 },
-  listItemCount: {
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  listItemGoing: {
-    fontSize: 10,
-    color: '#9CA3AF',
-    fontWeight: '600',
-  },
-  /* ── overlay ── */
-  overlay: {
-    position: 'absolute',
-    top: 56,
-    left: 0,
-    right: 0,
-    paddingHorizontal: 16,
-    gap: 10,
-  },
-  searchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  searchBar: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-    gap: 8,
-  },
-  searchIcon: { fontSize: 16 },
-  searchInput: {
-    flex: 1,
-    fontSize: 15,
-    color: '#111827',
-    padding: 0,
-  },
-  clearIcon: {
-    fontSize: 13,
-    color: '#9CA3AF',
-    fontWeight: '600',
-  },
-  iconBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  iconBtnActive: {
-    backgroundColor: '#0284C7',
-  },
-  logoutBtn: {
-    backgroundColor: '#FEE2E2',
-  },
-  iconBtnText: { fontSize: 18 },
-  tabRow: {
-    flexDirection: 'row',
-    gap: 7,
-  },
-  tab: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 50,
-    paddingVertical: 9,
-    paddingHorizontal: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  tabActive: {
-    backgroundColor: '#0284C7',
-  },
-  tabIcon: {
-    fontSize: 12,
-  },
-  tabText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#374151',
-  },
-  tabTextActive: {
-    color: '#FFFFFF',
-  },
-  /* ── no events today overlay ── */
-  emptyOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 32,
-  },
-  emptyCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 32,
-    alignItems: 'center',
-    gap: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 16,
-    elevation: 8,
-    width: '100%',
-  },
-  emptyEmoji: {
-    fontSize: 40,
-    marginBottom: 4,
-  },
-  emptyTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#111827',
-  },
-  emptyCreateBtn: {
-    marginTop: 8,
-    backgroundColor: '#0284C7',
-    paddingVertical: 12,
-    paddingHorizontal: 28,
-    borderRadius: 50,
-  },
-  emptyCreateBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  /* ── event detail card ── */
-  card: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 26,
-    borderTopRightRadius: 26,
-    padding: 24,
-    paddingBottom: 40,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 14,
-    gap: 10,
-  },
-  cardHandle: {
-    alignSelf: 'center',
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#E5E7EB',
-    marginBottom: 4,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  cardBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 5,
-    paddingHorizontal: 12,
-    borderRadius: 50,
-  },
-  cardBadgeEmoji: { fontSize: 14 },
-  cardBadgeText: { fontSize: 13, fontWeight: '700' },
-  cardClose: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#F3F4F6',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cardCloseText: { fontSize: 12, color: '#6B7280', fontWeight: '600' },
-  cardTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#111827',
-    letterSpacing: -0.3,
-  },
-  cardLocation: { fontSize: 14, color: '#6B7280', fontWeight: '500' },
-  cardMeta: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  cardMetaText: { fontSize: 13, color: '#374151', fontWeight: '500' },
-  cardMetaDot: { fontSize: 13, color: '#9CA3AF' },
-  cardDescription: { fontSize: 14, color: '#6B7280', lineHeight: 21 },
-  /* attendee bar */
-  attendeeRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 2,
-  },
-  attendeeLabel: { fontSize: 13, color: '#374151', fontWeight: '600' },
-  attendeePct: { fontSize: 13, fontWeight: '700' },
-  attendeeTrack: {
-    height: 6,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 3,
-    overflow: 'hidden',
-    marginTop: -4,
-  },
-  attendeeFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
-  cardButton: {
-    marginTop: 4,
-    paddingVertical: 15,
-    borderRadius: 50,
-    alignItems: 'center',
-  },
-  cardButtonLeave: {
-    backgroundColor: '#EF4444',
-  },
-  cardButtonDelete: {
-    marginTop: 4,
-    paddingVertical: 15,
-    borderRadius: 50,
-    alignItems: 'center',
-    backgroundColor: '#1F2937',
-  },
-  cardButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: 0.2,
-  },
-  createBtn: {
-    backgroundColor: '#0284C7',
-  },
-  createBtnText: {
-    fontSize: 26,
-    fontWeight: '300',
-    color: '#FFFFFF',
-    lineHeight: 30,
-  },
-});
+function makeStyles(t: AppTheme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: t.bg,
+    },
+    /* ── list view ── */
+    listContainer: {
+      backgroundColor: t.bg,
+    },
+    listContent: {
+      paddingTop: 168,
+      paddingHorizontal: 16,
+      paddingBottom: 32,
+      gap: 10,
+    },
+    listEmpty: {
+      paddingTop: 40,
+      alignItems: 'center',
+      gap: 10,
+    },
+    listEmptyEmoji: {
+      fontSize: 36,
+    },
+    listEmptyTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: t.text,
+    },
+    listEmptyText: {
+      fontSize: 14,
+      color: t.textMuted,
+      textAlign: 'center',
+      paddingHorizontal: 16,
+    },
+    listCreateBtn: {
+      marginTop: 4,
+      backgroundColor: '#0284C7',
+      paddingVertical: 11,
+      paddingHorizontal: 24,
+      borderRadius: 50,
+    },
+    listCreateBtnText: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: '#FFFFFF',
+    },
+    listItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: t.surface,
+      borderRadius: 16,
+      padding: 14,
+      gap: 12,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: t.isDark ? 0.3 : 0.07,
+      shadowRadius: 6,
+      elevation: 2,
+    },
+    listItemIcon: {
+      width: 46,
+      height: 46,
+      borderRadius: 13,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    listItemEmoji: { fontSize: 24 },
+    listItemInfo: { flex: 1, gap: 3 },
+    listItemTitle: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: t.text,
+    },
+    listItemSub: {
+      fontSize: 12,
+      color: t.textMuted,
+      fontWeight: '500',
+    },
+    listItemRight: { alignItems: 'flex-end', gap: 2 },
+    listItemCount: {
+      fontSize: 13,
+      fontWeight: '800',
+    },
+    listItemGoing: {
+      fontSize: 10,
+      color: t.textMuted,
+      fontWeight: '600',
+    },
+    /* ── overlay ── */
+    overlay: {
+      position: 'absolute',
+      top: 56,
+      left: 0,
+      right: 0,
+      paddingHorizontal: 16,
+      gap: 10,
+    },
+    searchRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    searchBar: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: t.surface,
+      borderRadius: 14,
+      paddingHorizontal: 14,
+      paddingVertical: 11,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: t.isDark ? 0.3 : 0.1,
+      shadowRadius: 8,
+      elevation: 4,
+      gap: 8,
+    },
+    searchIcon: { fontSize: 16 },
+    searchInput: {
+      flex: 1,
+      fontSize: 15,
+      color: t.text,
+      padding: 0,
+    },
+    clearIcon: {
+      fontSize: 13,
+      color: t.textMuted,
+      fontWeight: '600',
+    },
+    iconBtn: {
+      width: 44,
+      height: 44,
+      borderRadius: 14,
+      backgroundColor: t.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: t.isDark ? 0.3 : 0.1,
+      shadowRadius: 8,
+      elevation: 4,
+    },
+    iconBtnActive: {
+      backgroundColor: '#0284C7',
+    },
+    logoutBtn: {
+      backgroundColor: t.isDark ? '#3B0A0A' : '#FEE2E2',
+    },
+    iconBtnText: { fontSize: 18 },
+    tabRow: {
+      flexDirection: 'row',
+      gap: 7,
+    },
+    tab: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 4,
+      backgroundColor: t.surface,
+      borderRadius: 50,
+      paddingVertical: 9,
+      paddingHorizontal: 6,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: t.isDark ? 0.3 : 0.08,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    tabActive: {
+      backgroundColor: '#0284C7',
+    },
+    tabIcon: {
+      fontSize: 12,
+    },
+    tabText: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: t.text,
+    },
+    tabTextActive: {
+      color: '#FFFFFF',
+    },
+    /* ── no events today overlay ── */
+    emptyOverlay: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 32,
+    },
+    emptyCard: {
+      backgroundColor: t.surface,
+      borderRadius: 24,
+      padding: 32,
+      alignItems: 'center',
+      gap: 8,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: t.isDark ? 0.4 : 0.1,
+      shadowRadius: 16,
+      elevation: 8,
+      width: '100%',
+    },
+    emptyEmoji: {
+      fontSize: 40,
+      marginBottom: 4,
+    },
+    emptyTitle: {
+      fontSize: 17,
+      fontWeight: '800',
+      color: t.text,
+    },
+    emptyCreateBtn: {
+      marginTop: 8,
+      backgroundColor: '#0284C7',
+      paddingVertical: 12,
+      paddingHorizontal: 28,
+      borderRadius: 50,
+    },
+    emptyCreateBtnText: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: '#FFFFFF',
+    },
+    /* ── event detail card ── */
+    card: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      backgroundColor: t.surface,
+      borderTopLeftRadius: 26,
+      borderTopRightRadius: 26,
+      padding: 24,
+      paddingBottom: 40,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: -4 },
+      shadowOpacity: t.isDark ? 0.4 : 0.12,
+      shadowRadius: 16,
+      elevation: 14,
+      gap: 10,
+    },
+    cardHandle: {
+      alignSelf: 'center',
+      width: 36,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: t.handleBar,
+      marginBottom: 4,
+    },
+    cardHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    cardBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingVertical: 5,
+      paddingHorizontal: 12,
+      borderRadius: 50,
+    },
+    cardBadgeEmoji: { fontSize: 14 },
+    cardBadgeText: { fontSize: 13, fontWeight: '700' },
+    cardClose: {
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      backgroundColor: t.closeBtnBg,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    cardCloseText: { fontSize: 12, color: t.textSub, fontWeight: '600' },
+    cardTitle: {
+      fontSize: 20,
+      fontWeight: '800',
+      color: t.text,
+      letterSpacing: -0.3,
+    },
+    cardLocation: { fontSize: 14, color: t.textSub, fontWeight: '500' },
+    cardMeta: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    cardMetaText: { fontSize: 13, color: t.text, fontWeight: '500' },
+    cardMetaDot: { fontSize: 13, color: t.textMuted },
+    cardDescription: { fontSize: 14, color: t.textSub, lineHeight: 21 },
+    /* attendee bar */
+    attendeeRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginTop: 2,
+    },
+    attendeeLabel: { fontSize: 13, color: t.text, fontWeight: '600' },
+    attendeePct: { fontSize: 13, fontWeight: '700' },
+    attendeeTrack: {
+      height: 6,
+      backgroundColor: t.border,
+      borderRadius: 3,
+      overflow: 'hidden',
+      marginTop: -4,
+    },
+    attendeeFill: {
+      height: '100%',
+      borderRadius: 3,
+    },
+    cardButton: {
+      marginTop: 4,
+      paddingVertical: 15,
+      borderRadius: 50,
+      alignItems: 'center',
+    },
+    cardButtonLeave: {
+      backgroundColor: '#EF4444',
+    },
+    cardButtonDelete: {
+      marginTop: 4,
+      paddingVertical: 15,
+      borderRadius: 50,
+      alignItems: 'center',
+      backgroundColor: t.isDark ? '#374151' : '#1F2937',
+    },
+    cardButtonText: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: '#FFFFFF',
+      letterSpacing: 0.2,
+    },
+    createBtn: {
+      backgroundColor: '#0284C7',
+    },
+    createBtnText: {
+      fontSize: 26,
+      fontWeight: '300',
+      color: '#FFFFFF',
+      lineHeight: 30,
+    },
+  });
+}

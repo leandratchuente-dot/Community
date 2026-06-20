@@ -12,9 +12,11 @@ import {
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { supabase } from '@/lib/supabase';
+import { useTheme } from '@/lib/theme';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const t = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -39,7 +41,7 @@ export default function LoginScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: t.brandBg }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <StatusBar style="light" />
@@ -57,7 +59,7 @@ export default function LoginScreen() {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Email</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: t.brandInputBg, borderColor: t.brandInputBorder }]}
               placeholder="your@email.com"
               placeholderTextColor="rgba(255,255,255,0.4)"
               value={email}
@@ -71,7 +73,7 @@ export default function LoginScreen() {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Password</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: t.brandInputBg, borderColor: t.brandInputBorder }]}
               placeholder="Your password"
               placeholderTextColor="rgba(255,255,255,0.4)"
               value={password}

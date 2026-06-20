@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -14,9 +14,9 @@ import {
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { supabase } from '@/lib/supabase';
+import { useTheme, type AppTheme } from '@/lib/theme';
 
 const BLUE = '#0284C7';
-const BLUE_LIGHT = '#E0F2FE';
 
 const CATEGORIES = [
   'Basketball', 'Football', 'Gaming', 'Jazz', 'Volleyball',
@@ -44,6 +44,8 @@ function daysInMonth(month: number, year: number) {
 
 export default function CreateEventScreen() {
   const router = useRouter();
+  const t = useTheme();
+  const styles = useMemo(() => makeStyles(t), [t.isDark]);
   const now = new Date();
 
   const [title, setTitle] = useState('');
@@ -132,7 +134,7 @@ export default function CreateEventScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <StatusBar style="dark" />
+      <StatusBar style={t.isDark ? 'light' : 'dark'} />
 
       <ScrollView
         contentContainerStyle={styles.scroll}
@@ -356,248 +358,250 @@ export default function CreateEventScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
-  scroll: {
-    paddingBottom: 60,
-  },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 60,
-    paddingBottom: 20,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#F3F4F6',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  backIcon: {
-    fontSize: 20,
-    color: '#374151',
-    fontWeight: '600',
-  },
-  screenTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#111827',
-    letterSpacing: -0.3,
-  },
-  form: {
-    paddingHorizontal: 20,
-    paddingTop: 24,
-    gap: 20,
-  },
-  field: {
-    gap: 6,
-  },
-  label: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#374151',
-    letterSpacing: 0.2,
-  },
-  input: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    fontSize: 15,
-    color: '#111827',
-    borderWidth: 1.5,
-    borderColor: '#E5E7EB',
-  },
-  multiline: {
-    minHeight: 90,
-    paddingTop: 14,
-  },
-  pickerRow: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderWidth: 1.5,
-    borderColor: '#E5E7EB',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  pickerValue: {
-    fontSize: 15,
-    color: '#111827',
-    fontWeight: '500',
-  },
-  pickerPlaceholder: {
-    fontSize: 15,
-    color: '#9CA3AF',
-  },
-  chevron: {
-    fontSize: 20,
-    color: '#9CA3AF',
-  },
-  locationRow: {
-    flexDirection: 'row',
-    gap: 8,
-    alignItems: 'center',
-  },
-  lookupBtn: {
-    backgroundColor: BLUE,
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: 76,
-  },
-  lookupBtnSuccess: {
-    backgroundColor: '#10B981',
-  },
-  lookupBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  coordHint: {
-    fontSize: 12,
-    color: '#10B981',
-    fontWeight: '500',
-    marginTop: 4,
-  },
-  createBtn: {
-    marginHorizontal: 20,
-    marginTop: 32,
-    backgroundColor: BLUE,
-    paddingVertical: 18,
-    borderRadius: 50,
-    alignItems: 'center',
-    shadowColor: BLUE,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  createBtnText: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: 0.3,
-  },
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  sheet: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 24,
-    width: '100%',
-    maxHeight: '85%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.16,
-    shadowRadius: 24,
-    elevation: 16,
-  },
-  sheetTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#111827',
-    marginBottom: 16,
-    letterSpacing: -0.2,
-  },
-  catRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 13,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    gap: 12,
-    marginBottom: 2,
-  },
-  catRowActive: {
-    backgroundColor: BLUE_LIGHT,
-  },
-  catEmoji: {
-    fontSize: 22,
-  },
-  catName: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#374151',
-  },
-  catNameActive: {
-    color: BLUE,
-  },
-  catCheck: {
-    fontSize: 16,
-    color: BLUE,
-    fontWeight: '700',
-  },
-  drumRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 16,
-  },
-  drumCol: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  drumHeader: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#9CA3AF',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    marginBottom: 8,
-  },
-  drum: {
-    height: 180,
-    width: '100%',
-  },
-  drumItem: {
-    paddingVertical: 10,
-    alignItems: 'center',
-    borderRadius: 10,
-    marginVertical: 1,
-  },
-  drumItemActive: {
-    backgroundColor: BLUE_LIGHT,
-  },
-  drumText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#6B7280',
-  },
-  drumTextActive: {
-    color: BLUE,
-    fontWeight: '800',
-    fontSize: 17,
-  },
-  confirmBtn: {
-    backgroundColor: BLUE,
-    paddingVertical: 14,
-    borderRadius: 50,
-    alignItems: 'center',
-  },
-  confirmBtnText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: 0.2,
-  },
-});
+function makeStyles(t: AppTheme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: t.bg,
+    },
+    scroll: {
+      paddingBottom: 60,
+    },
+    topBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingTop: 60,
+      paddingBottom: 20,
+      backgroundColor: t.surface,
+      borderBottomWidth: 1,
+      borderBottomColor: t.border,
+    },
+    backBtn: {
+      width: 40,
+      height: 40,
+      borderRadius: 12,
+      backgroundColor: t.closeBtnBg,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    backIcon: {
+      fontSize: 20,
+      color: t.text,
+      fontWeight: '600',
+    },
+    screenTitle: {
+      fontSize: 18,
+      fontWeight: '800',
+      color: t.text,
+      letterSpacing: -0.3,
+    },
+    form: {
+      paddingHorizontal: 20,
+      paddingTop: 24,
+      gap: 20,
+    },
+    field: {
+      gap: 6,
+    },
+    label: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: t.textSub,
+      letterSpacing: 0.2,
+    },
+    input: {
+      backgroundColor: t.surface,
+      borderRadius: 14,
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+      fontSize: 15,
+      color: t.text,
+      borderWidth: 1.5,
+      borderColor: t.border,
+    },
+    multiline: {
+      minHeight: 90,
+      paddingTop: 14,
+    },
+    pickerRow: {
+      backgroundColor: t.surface,
+      borderRadius: 14,
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+      borderWidth: 1.5,
+      borderColor: t.border,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    pickerValue: {
+      fontSize: 15,
+      color: t.text,
+      fontWeight: '500',
+    },
+    pickerPlaceholder: {
+      fontSize: 15,
+      color: t.textMuted,
+    },
+    chevron: {
+      fontSize: 20,
+      color: t.textMuted,
+    },
+    locationRow: {
+      flexDirection: 'row',
+      gap: 8,
+      alignItems: 'center',
+    },
+    lookupBtn: {
+      backgroundColor: BLUE,
+      borderRadius: 12,
+      paddingVertical: 14,
+      paddingHorizontal: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+      minWidth: 76,
+    },
+    lookupBtnSuccess: {
+      backgroundColor: '#10B981',
+    },
+    lookupBtnText: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: '#FFFFFF',
+    },
+    coordHint: {
+      fontSize: 12,
+      color: '#10B981',
+      fontWeight: '500',
+      marginTop: 4,
+    },
+    createBtn: {
+      marginHorizontal: 20,
+      marginTop: 32,
+      backgroundColor: BLUE,
+      paddingVertical: 18,
+      borderRadius: 50,
+      alignItems: 'center',
+      shadowColor: BLUE,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 12,
+      elevation: 6,
+    },
+    createBtnText: {
+      fontSize: 17,
+      fontWeight: '700',
+      color: '#FFFFFF',
+      letterSpacing: 0.3,
+    },
+    overlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.55)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 24,
+    },
+    sheet: {
+      backgroundColor: t.surface,
+      borderRadius: 24,
+      padding: 24,
+      width: '100%',
+      maxHeight: '85%',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.16,
+      shadowRadius: 24,
+      elevation: 16,
+    },
+    sheetTitle: {
+      fontSize: 17,
+      fontWeight: '800',
+      color: t.text,
+      marginBottom: 16,
+      letterSpacing: -0.2,
+    },
+    catRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 13,
+      paddingHorizontal: 12,
+      borderRadius: 12,
+      gap: 12,
+      marginBottom: 2,
+    },
+    catRowActive: {
+      backgroundColor: t.primaryLight,
+    },
+    catEmoji: {
+      fontSize: 22,
+    },
+    catName: {
+      flex: 1,
+      fontSize: 15,
+      fontWeight: '600',
+      color: t.text,
+    },
+    catNameActive: {
+      color: BLUE,
+    },
+    catCheck: {
+      fontSize: 16,
+      color: BLUE,
+      fontWeight: '700',
+    },
+    drumRow: {
+      flexDirection: 'row',
+      gap: 8,
+      marginBottom: 16,
+    },
+    drumCol: {
+      flex: 1,
+      alignItems: 'center',
+    },
+    drumHeader: {
+      fontSize: 11,
+      fontWeight: '700',
+      color: t.textMuted,
+      letterSpacing: 0.8,
+      textTransform: 'uppercase',
+      marginBottom: 8,
+    },
+    drum: {
+      height: 180,
+      width: '100%',
+    },
+    drumItem: {
+      paddingVertical: 10,
+      alignItems: 'center',
+      borderRadius: 10,
+      marginVertical: 1,
+    },
+    drumItemActive: {
+      backgroundColor: t.primaryLight,
+    },
+    drumText: {
+      fontSize: 16,
+      fontWeight: '500',
+      color: t.textSub,
+    },
+    drumTextActive: {
+      color: BLUE,
+      fontWeight: '800',
+      fontSize: 17,
+    },
+    confirmBtn: {
+      backgroundColor: BLUE,
+      paddingVertical: 14,
+      borderRadius: 50,
+      alignItems: 'center',
+    },
+    confirmBtnText: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: '#FFFFFF',
+      letterSpacing: 0.2,
+    },
+  });
+}

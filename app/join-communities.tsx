@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   ScrollView,
@@ -10,9 +10,7 @@ import {
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { supabase } from '@/lib/supabase';
-
-const BLUE = '#0284C7';
-const BLUE_LIGHT = '#E0F2FE';
+import { useTheme, type AppTheme } from '@/lib/theme';
 
 const CATEGORY_EMOJI: Record<string, string> = {
   Basketball: '🏀',
@@ -36,6 +34,8 @@ type Community = {
 
 export default function JoinCommunitiesScreen() {
   const router = useRouter();
+  const t = useTheme();
+  const styles = useMemo(() => makeStyles(t), [t.isDark]);
   const [communities, setCommunities] = useState<Community[]>([]);
   const [loading, setLoading] = useState(true);
   const [joinedIds, setJoinedIds] = useState<Set<string>>(new Set());
@@ -109,7 +109,7 @@ export default function JoinCommunitiesScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="dark" />
+      <StatusBar style={t.isDark ? 'light' : 'dark'} />
 
       <ScrollView
         contentContainerStyle={styles.scroll}
@@ -194,180 +194,182 @@ export default function JoinCommunitiesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
-  scroll: {
-    paddingBottom: 120,
-  },
-  header: {
-    paddingHorizontal: 24,
-    paddingTop: 68,
-    paddingBottom: 28,
-    gap: 6,
-  },
-  eyebrow: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: BLUE,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    marginBottom: 2,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: '#111827',
-    letterSpacing: -0.5,
-  },
-  sub: {
-    fontSize: 15,
-    color: '#6B7280',
-    lineHeight: 22,
-    marginTop: 4,
-  },
-  loader: {
-    marginTop: 60,
-  },
-  empty: {
-    alignItems: 'center',
-    paddingHorizontal: 40,
-    paddingTop: 48,
-    gap: 12,
-  },
-  emptyEmoji: {
-    fontSize: 48,
-    marginBottom: 4,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  emptyText: {
-    fontSize: 14,
-    color: '#9CA3AF',
-    textAlign: 'center',
-    lineHeight: 21,
-  },
-  list: {
-    paddingHorizontal: 16,
-    gap: 10,
-  },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.07,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  cardLeft: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    minWidth: 0,
-  },
-  iconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: BLUE_LIGHT,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  iconEmoji: {
-    fontSize: 24,
-  },
-  cardInfo: {
-    flex: 1,
-    gap: 2,
-    minWidth: 0,
-  },
-  cardName: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  cardCategory: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: BLUE,
-  },
-  cardDesc: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    lineHeight: 17,
-    marginTop: 1,
-  },
-  joinBtn: {
-    backgroundColor: BLUE,
-    paddingVertical: 9,
-    paddingHorizontal: 18,
-    borderRadius: 50,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-    minWidth: 72,
-  },
-  joinBtnDone: {
-    backgroundColor: '#D1FAE5',
-  },
-  joinBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  joinBtnTextDone: {
-    color: '#059669',
-  },
-  footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingHorizontal: 20,
-    paddingBottom: 44,
-    paddingTop: 16,
-    backgroundColor: '#F9FAFB',
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-  },
-  doneBtn: {
-    backgroundColor: BLUE,
-    paddingVertical: 18,
-    borderRadius: 50,
-    alignItems: 'center',
-    shadowColor: BLUE,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 5,
-  },
-  doneBtnSkip: {
-    backgroundColor: 'transparent',
-    shadowOpacity: 0,
-    elevation: 0,
-    borderWidth: 1.5,
-    borderColor: '#D1D5DB',
-  },
-  doneBtnText: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: 0.2,
-  },
-  doneBtnTextSkip: {
-    color: '#6B7280',
-  },
-});
+function makeStyles(t: AppTheme) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: t.bg,
+    },
+    scroll: {
+      paddingBottom: 120,
+    },
+    header: {
+      paddingHorizontal: 24,
+      paddingTop: 68,
+      paddingBottom: 28,
+      gap: 6,
+    },
+    eyebrow: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: t.primary,
+      letterSpacing: 0.8,
+      textTransform: 'uppercase',
+      marginBottom: 2,
+    },
+    title: {
+      fontSize: 32,
+      fontWeight: '800',
+      color: t.text,
+      letterSpacing: -0.5,
+    },
+    sub: {
+      fontSize: 15,
+      color: t.textSub,
+      lineHeight: 22,
+      marginTop: 4,
+    },
+    loader: {
+      marginTop: 60,
+    },
+    empty: {
+      alignItems: 'center',
+      paddingHorizontal: 40,
+      paddingTop: 48,
+      gap: 12,
+    },
+    emptyEmoji: {
+      fontSize: 48,
+      marginBottom: 4,
+    },
+    emptyTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: t.text,
+    },
+    emptyText: {
+      fontSize: 14,
+      color: t.textMuted,
+      textAlign: 'center',
+      lineHeight: 21,
+    },
+    list: {
+      paddingHorizontal: 16,
+      gap: 10,
+    },
+    card: {
+      backgroundColor: t.surface,
+      borderRadius: 18,
+      padding: 14,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: t.isDark ? 0.3 : 0.07,
+      shadowRadius: 6,
+      elevation: 2,
+    },
+    cardLeft: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      minWidth: 0,
+    },
+    iconBox: {
+      width: 48,
+      height: 48,
+      borderRadius: 14,
+      backgroundColor: t.primaryLight,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+    },
+    iconEmoji: {
+      fontSize: 24,
+    },
+    cardInfo: {
+      flex: 1,
+      gap: 2,
+      minWidth: 0,
+    },
+    cardName: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: t.text,
+    },
+    cardCategory: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: t.primary,
+    },
+    cardDesc: {
+      fontSize: 12,
+      color: t.textMuted,
+      lineHeight: 17,
+      marginTop: 1,
+    },
+    joinBtn: {
+      backgroundColor: t.primary,
+      paddingVertical: 9,
+      paddingHorizontal: 18,
+      borderRadius: 50,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+      minWidth: 72,
+    },
+    joinBtnDone: {
+      backgroundColor: '#D1FAE5',
+    },
+    joinBtnText: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: '#FFFFFF',
+    },
+    joinBtnTextDone: {
+      color: '#059669',
+    },
+    footer: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      paddingHorizontal: 20,
+      paddingBottom: 44,
+      paddingTop: 16,
+      backgroundColor: t.bg,
+      borderTopWidth: 1,
+      borderTopColor: t.border,
+    },
+    doneBtn: {
+      backgroundColor: t.primary,
+      paddingVertical: 18,
+      borderRadius: 50,
+      alignItems: 'center',
+      shadowColor: t.primary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 10,
+      elevation: 5,
+    },
+    doneBtnSkip: {
+      backgroundColor: 'transparent',
+      shadowOpacity: 0,
+      elevation: 0,
+      borderWidth: 1.5,
+      borderColor: t.border,
+    },
+    doneBtnText: {
+      fontSize: 17,
+      fontWeight: '700',
+      color: '#FFFFFF',
+      letterSpacing: 0.2,
+    },
+    doneBtnTextSkip: {
+      color: t.textSub,
+    },
+  });
+}

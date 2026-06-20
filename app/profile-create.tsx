@@ -14,11 +14,13 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { supabase } from '@/lib/supabase';
 import { flushPendingInterests } from '@/lib/interests';
+import { useTheme } from '@/lib/theme';
 
 const AVATAR_COLORS = ['#0284C7', '#FF6B6B', '#4D96FF', '#6BCB77', '#FFD93D', '#FF922B', '#E879F9'];
 
 export default function ProfileCreateScreen() {
   const router = useRouter();
+  const t = useTheme();
   const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -80,7 +82,7 @@ export default function ProfileCreateScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: t.brandBg }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <StatusBar style="light" />
@@ -122,7 +124,7 @@ export default function ProfileCreateScreen() {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Full Name</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: t.brandInputBg, borderColor: t.brandInputBorder }]}
               placeholder="e.g. Alex Johnson"
               placeholderTextColor="rgba(255,255,255,0.4)"
               value={fullName}
@@ -133,7 +135,7 @@ export default function ProfileCreateScreen() {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Username</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: t.brandInputBg, borderColor: t.brandInputBorder }]}
               placeholder="e.g. alexj"
               placeholderTextColor="rgba(255,255,255,0.4)"
               value={username}
@@ -145,7 +147,7 @@ export default function ProfileCreateScreen() {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Email</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: t.brandInputBg, borderColor: t.brandInputBorder }]}
               placeholder="your@email.com"
               placeholderTextColor="rgba(255,255,255,0.4)"
               value={email}
@@ -159,7 +161,7 @@ export default function ProfileCreateScreen() {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Password</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: t.brandInputBg, borderColor: t.brandInputBorder }]}
               placeholder="Min. 6 characters"
               placeholderTextColor="rgba(255,255,255,0.4)"
               value={password}
