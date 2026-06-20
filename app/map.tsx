@@ -494,17 +494,6 @@ export default function MapScreen() {
     <View style={styles.container}>
       <StatusBar style="dark" />
 
-      {/* ── FAB: create event ── */}
-      {!selectedEvent && (
-        <TouchableOpacity
-          style={styles.fab}
-          onPress={() => router.push('/create-event')}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.fabText}>+</Text>
-        </TouchableOpacity>
-      )}
-
       {/* ── leaflet map (hidden in list view to preserve state) ── */}
       <WebView
         key={eventsLoaded ? 'ready' : 'init'}
@@ -561,6 +550,15 @@ export default function MapScreen() {
       {/* ── search + filter overlay ── */}
       <View style={styles.overlay} pointerEvents="box-none">
         <View style={styles.searchRow} pointerEvents="auto">
+          {/* create event */}
+          <TouchableOpacity
+            style={[styles.iconBtn, styles.createBtn]}
+            onPress={() => router.push('/create-event')}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.createBtnText}>+</Text>
+          </TouchableOpacity>
+
           <View style={styles.searchBar}>
             <Text style={styles.searchIcon}>🔍</Text>
             <TextInput
@@ -939,26 +937,13 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     letterSpacing: 0.2,
   },
-  fab: {
-    position: 'absolute',
-    bottom: 36,
-    right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+  createBtn: {
     backgroundColor: '#0284C7',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#0284C7',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    elevation: 8,
   },
-  fabText: {
-    fontSize: 28,
+  createBtnText: {
+    fontSize: 26,
     fontWeight: '300',
     color: '#FFFFFF',
-    lineHeight: 32,
+    lineHeight: 30,
   },
 });
