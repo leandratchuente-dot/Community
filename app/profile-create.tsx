@@ -15,7 +15,7 @@ import { StatusBar } from 'expo-status-bar';
 import { supabase } from '@/lib/supabase';
 import { flushPendingInterests } from '@/lib/interests';
 
-const AVATAR_COLORS = ['#6C47FF', '#FF6B6B', '#4D96FF', '#6BCB77', '#FFD93D', '#FF922B', '#E879F9'];
+const AVATAR_COLORS = ['#0284C7', '#FF6B6B', '#4D96FF', '#6BCB77', '#FFD93D', '#FF922B', '#E879F9'];
 
 export default function ProfileCreateScreen() {
   const router = useRouter();
@@ -194,7 +194,7 @@ export default function ProfileCreateScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#6C47FF',
+    backgroundColor: '#0284C7',
   },
   scroll: {
     paddingTop: 72,
@@ -293,7 +293,7 @@ const styles = StyleSheet.create({
   createBtnText: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#3D1F8C',
+    color: '#0284C7',
     letterSpacing: 0.3,
   },
   skipBtn: {

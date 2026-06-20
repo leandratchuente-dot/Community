@@ -78,7 +78,7 @@ export default function InterestSelectionScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#6C47FF',
+    backgroundColor: '#0284C7',
     paddingTop: 64,
     paddingHorizontal: 20,
     paddingBottom: 40,
@@ -112,8 +112,8 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   tagSelected: {
-    borderColor: '#7C3AED',
-    backgroundColor: '#EDE9FE',
+    borderColor: '#0EA5E9',
+    backgroundColor: '#E0F2FE',
   },
   tagEmoji: {
     fontSize: 26,
@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   tagLabelSelected: {
-    color: '#5B21B6',
+    color: '#0369A1',
   },
   /* ── footer ── */
   footer: {
@@ -148,7 +148,7 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#3D1F8C',
+    color: '#0284C7',
     letterSpacing: 0.3,
   },
 });

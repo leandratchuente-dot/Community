@@ -49,7 +49,7 @@ export default function WelcomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#6C47FF',
+    backgroundColor: '#0284C7',
     justifyContent: 'space-between',
     paddingHorizontal: 32,
     paddingBottom: 60,
@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#3D1F8C',
+    color: '#0284C7',
     letterSpacing: 0.3,
   },
   loginLink: {

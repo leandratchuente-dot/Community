@@ -32,7 +32,7 @@ type EventPin = {
   maxAttendees: number;
 };
 
-const FILTERS = ['All', 'Basketball', 'Football', 'Gaming', 'Jazz', 'Volleyball'];
+const FILTERS = ['All', 'Basketball', 'Football', 'Gaming', 'Jazz', 'Volleyball', 'Photography', 'Hiking', 'Cooking', 'Music', 'Art'];
 
 const CATEGORY_EMOJI: Record<string, string> = {
   Basketball: '🏀',
@@ -40,13 +40,15 @@ const CATEGORY_EMOJI: Record<string, string> = {
   Gaming: '🎮',
   Jazz: '🎷',
   Volleyball: '🏐',
+  Photography: '📷',
+  Hiking: '🥾',
+  Cooking: '🍳',
+  Music: '🎵',
+  Art: '🎨',
   Tennis: '🎾',
   Running: '🏃',
   Cycling: '🚴',
   Swimming: '🏊',
-  Hiking: '🥾',
-  Music: '🎵',
-  Art: '🎨',
 };
 
 const CATEGORY_COLOR: Record<string, string> = {
@@ -55,13 +57,15 @@ const CATEGORY_COLOR: Record<string, string> = {
   Gaming: '#6BCB77',
   Jazz: '#FFD93D',
   Volleyball: '#FF922B',
+  Photography: '#F472B6',
+  Hiking: '#8CE99A',
+  Cooking: '#FB923C',
+  Music: '#DA77F2',
+  Art: '#FFA94D',
   Tennis: '#A8E063',
   Running: '#F06595',
   Cycling: '#74C0FC',
   Swimming: '#38D9A9',
-  Hiking: '#8CE99A',
-  Music: '#DA77F2',
-  Art: '#FFA94D',
 };
 
 // ─── leaflet html ─────────────────────────────────────────────────────────────
@@ -94,16 +98,16 @@ function buildLeafletHTML(events: EventPin[]): string {
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body, #map { width: 100%; height: 100%; overflow: hidden; }
     .leaflet-control-attribution { font-size: 9px; }
-    /* cluster rings use app purple */
+    /* cluster rings use app blue */
     .marker-cluster-small,
     .marker-cluster-medium,
     .marker-cluster-large {
-      background-color: rgba(61, 31, 140, 0.18) !important;
+      background-color: rgba(2, 132, 199, 0.18) !important;
     }
     .marker-cluster-small div,
     .marker-cluster-medium div,
     .marker-cluster-large div {
-      background-color: #3D1F8C !important;
+      background-color: #0284C7 !important;
       color: white !important;
       font-weight: 700 !important;
       font-size: 13px !important;
@@ -135,7 +139,7 @@ function buildLeafletHTML(events: EventPin[]): string {
         return L.divIcon({
           html: '<div style="'
             + 'width:46px;height:46px;border-radius:50%;'
-            + 'background:#3D1F8C;'
+            + 'background:#0284C7;'
             + 'display:flex;align-items:center;justify-content:center;'
             + 'color:white;font-size:15px;font-weight:700;'
             + 'box-shadow:0 3px 10px rgba(0,0,0,0.28);'
@@ -311,7 +315,7 @@ export default function MapScreen() {
               time: row.time,
               description: row.description ?? '',
               category,
-              color: CATEGORY_COLOR[category] ?? '#3D1F8C',
+              color: CATEGORY_COLOR[category] ?? '#0284C7',
               emoji: CATEGORY_EMOJI[category] ?? '📍',
               lat: row.latitude,
               lng: row.longitude,
@@ -421,6 +425,7 @@ export default function MapScreen() {
 
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
+      console.log('[JoinEvent] No session — redirecting to profile-create');
       router.push('/profile-create');
       return;
     }
@@ -428,6 +433,8 @@ export default function MapScreen() {
     const eventId = selectedEvent.id;
     const userId = session.user.id;
     const isJoined = joinedEventIds.has(eventId);
+
+    console.log('[JoinEvent] tap —', { userId, eventId, action: isJoined ? 'leave' : 'join' });
 
     setJoiningId(eventId);
     try {
@@ -437,6 +444,8 @@ export default function MapScreen() {
           .delete()
           .eq('event_id', eventId)
           .eq('user_id', userId);
+
+        console.log('[JoinEvent] leave result —', { error });
 
         if (!error) {
           const next = new Set(joinedEventIds);
@@ -450,7 +459,9 @@ export default function MapScreen() {
       } else {
         const { error } = await supabase
           .from('event_attendees')
-          .insert({ event_id: eventId, user_id: userId });
+          .upsert({ event_id: eventId, user_id: userId }, { onConflict: 'event_id,user_id' });
+
+        console.log('[JoinEvent] join result —', { error });
 
         if (!error) {
           const next = new Set(joinedEventIds);
@@ -482,6 +493,17 @@ export default function MapScreen() {
   return (
     <View style={styles.container}>
       <StatusBar style="dark" />
+
+      {/* ── FAB: create event ── */}
+      {!selectedEvent && (
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={() => router.push('/create-event')}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.fabText}>+</Text>
+        </TouchableOpacity>
+      )}
 
       {/* ── leaflet map (hidden in list view to preserve state) ── */}
       <WebView
@@ -788,7 +810,7 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   iconBtnActive: {
-    backgroundColor: '#3D1F8C',
+    backgroundColor: '#0284C7',
   },
   logoutBtn: {
     backgroundColor: '#FEE2E2',
@@ -812,8 +834,8 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   filterChipActive: {
-    backgroundColor: '#3D1F8C',
-    borderColor: '#3D1F8C',
+    backgroundColor: '#0284C7',
+    borderColor: '#0284C7',
   },
   filterChipText: {
     fontSize: 13,
@@ -916,5 +938,27 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
     letterSpacing: 0.2,
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 36,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#0284C7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#0284C7',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  fabText: {
+    fontSize: 28,
+    fontWeight: '300',
+    color: '#FFFFFF',
+    lineHeight: 32,
   },
 });

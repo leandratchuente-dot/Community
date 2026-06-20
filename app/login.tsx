@@ -106,7 +106,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#6C47FF',
+    backgroundColor: '#0284C7',
   },
   inner: {
     flex: 1,
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
   loginBtnText: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#3D1F8C',
+    color: '#0284C7',
     letterSpacing: 0.3,
   },
   /* footer */
