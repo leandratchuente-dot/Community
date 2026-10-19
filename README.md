@@ -1,50 +1,33 @@
-# Welcome to your Expo app 👋
+# Community
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Mobile App, die Menschen in Karlsruhe hilft, Events und Gleichgesinnte mit
+denselben Interessen zu finden – und Kontakte aus dem Netz ins echte Leben zu bringen.
 
-## Get started
+> Status: in aktiver Entwicklung (MVP)
 
-1. Install dependencies
+## Kernidee
+Eine Live-Karte zeigt Events in der Nähe. Nutzer legen ein Profil mit ihren
+Interessen an, treten Communities bei und finden Events, die zu ihnen passen.
 
-   ```bash
-   npm install
-   ```
+## Tech Stack
+- **Frontend:** React Native, TypeScript, Expo, Expo Router (file-based routing)
+- **Backend:** Supabase (PostgreSQL, Authentifizierung)
 
-2. Start the app
+## Aktueller Stand
+- Registrierung und Login über Supabase Auth
+- Datenmodell mit Tabellen für Profile, Events, Interessen und Communities
+- Kartenansicht mit Events
 
-   ```bash
-   npx expo start
-   ```
+## Geplant
+- Supabase-Zugriffe in eigene Module auslagern (`lib/auth.ts`, `lib/events.ts`, `lib/communities.ts`)
+- Echtzeit-Gruppenchat pro Community
+- Empfehlungen passender Events auf Basis der Interessen
 
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
+## Lokal starten
 ```bash
-npm run reset-project
+npm install
+npx expo start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Team
+Gemeinsam mit Enzo gestartet, seitdem von Léandra Tchuente weiterentwickelt.
